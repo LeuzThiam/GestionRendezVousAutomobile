@@ -1,0 +1,55 @@
+<!-- stats/templates/stats/stats.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Statistiques</title>
+  <!-- Bootstrap 5 CSS (CDN par exemple) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="p-4">
+  <div class="container">
+    <h1>Statistiques Globales</h1>
+    <div class="row mt-4">
+      <div class="col-md-6">
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Utilisateurs totaux
+            <span class="badge bg-primary rounded-pill">{{ total_users }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Clients
+            <span class="badge bg-info rounded-pill">{{ total_clients }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Mécaniciens
+            <span class="badge bg-info rounded-pill">{{ total_mecaniciens }}</span>
+          </li>
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Véhicules
+            <span class="badge bg-primary rounded-pill">{{ total_vehicules }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Rendez-vous
+            <span class="badge bg-info rounded-pill">{{ total_rendezvous }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Factures
+            <span class="badge bg-info rounded-pill">{{ total_factures }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Total des paiements
+            <span class="badge bg-success rounded-pill">{{ total_paiements }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <!-- Optionnel, JS Bootstrap 5 -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

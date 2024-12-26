@@ -1,0 +1,73 @@
+import React from "react";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+
+// Profils
+import ProfileClient from "./Pages/ProfileClient.jsx";
+import ProfileMecanicien from "./Pages/ProfileMecanicien.jsx";
+
+// Composants annexes
+import GestionVehicule from "./Pages/GestionVehicule.jsx";
+import PaiementFacturation from "./Pages/PaiementFacturation.jsx";
+import RendezVous from "./Pages/RendezVous.jsx";
+import BilanMecanicien from "./Pages/BilanMecanicien.jsx";
+import ListeRendezVousClient from "./Pages/ListeRendezVousClient.jsx";
+import ListeRendezVousMecanicien from "./Pages/ListeRendezVousMecanicien.jsx";
+import AnnuaireMecaniciens from "./Pages/AnnuaireMecaniciens.jsx";
+import MesFactures from "./Pages/MesFactures.jsx";
+
+// Menu (Navbar)
+import Menu from "./Pages/Menu.jsx";
+
+// Pages principales
+import Acceuil from "./Pages/Acceuil.jsx";
+import Inscription from "./Pages/Inscription.jsx";
+import Connexion from "./Pages/Connexion.jsx";
+
+// Styles
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./Pages/style.css";
+
+function App() {
+  return (
+    <Router>
+      <div>
+        {/* Menu disponible sur toutes les pages */}
+        <Menu />
+
+        <Routes>
+          {/* 1) Page d’accueil */}
+          <Route path="/acceuil" element={<Acceuil />} />
+
+          {/* 2) Page de connexion */}
+          <Route path="/connexion" element={<Connexion />} />
+
+          {/* 3) Page d’inscription */}
+          <Route path="/inscription" element={<Inscription />} />
+
+          {/* 4) Redirection de "/" vers "/acceuil" */}
+          <Route path="/" element={<Navigate to="/acceuil" replace />} />
+
+          {/* PROFIL CLIENT */}
+          <Route path="/profil/client" element={<ProfileClient />} />
+          <Route path="/profil/client/vehicules" element={<GestionVehicule />} />
+          <Route path="/profil/client/rendez-vous" element={<RendezVous />} />
+          <Route path="/profil/client/paiement" element={<PaiementFacturation />} />
+          <Route path="/profil/client/AnnuaireMecanicien" element={<AnnuaireMecaniciens />} />
+          <Route path="/profil/client/rendez-vous-client" element={<ListeRendezVousClient />} />
+          <Route path="/profil/client/factures" element={<MesFactures />} />
+
+          {/* PROFIL MECANICIEN */}
+          <Route path="/profil/mecanicien" element={<ProfileMecanicien />} />
+          <Route path="/profil/mecanicien/BilanMecanicien" element={<BilanMecanicien />} />
+          <Route path="/profil/mecanicien/vehicules" element={<GestionVehicule />} />
+          <Route
+            path="/profil/mecanicien/rendez-vous-mecanicien"
+            element={<ListeRendezVousMecanicien />}
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
