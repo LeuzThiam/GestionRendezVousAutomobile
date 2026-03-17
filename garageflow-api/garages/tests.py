@@ -9,7 +9,7 @@ from garages.models import Garage
 class GarageApiTests(APITestCase):
     def test_owner_can_register_garage(self):
         response = self.client.post(
-            '/api/garages/register/',
+            '/api/auth/register/',
             {
                 'garage_name': 'Garage Flow Montreal',
                 'username': 'owner1',

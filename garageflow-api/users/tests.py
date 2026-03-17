@@ -7,6 +7,79 @@ from garages.models import Garage
 
 
 class UsersApiTests(APITestCase):
+    def test_auth_login_returns_tokens_and_user_for_valid_credentials(self):
+        user = User.objects.create_user(
+            username='owner-auth',
+            email='owner-auth@example.com',
+            password='testpass1234',
+            first_name='Ali',
+            last_name='Diallo',
+        )
+        garage = Garage.objects.create(name='Garage Auth', slug='garage-auth', owner=user)
+        user.profile.role = 'owner'
+        user.profile.garage = garage
+        user.profile.save()
+
+        response = self.client.post(
+            '/api/auth/login/',
+            {
+                'email': 'owner-auth@example.com',
+                'password': 'testpass1234',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertEqual(response.data['user']['email'], 'owner-auth@example.com')
+        self.assertEqual(response.data['user']['role'], 'owner')
+
+    def test_auth_login_rejects_invalid_credentials_with_neutral_message(self):
+        User.objects.create_user(
+            username='owner-auth-bad',
+            email='owner-auth-bad@example.com',
+            password='testpass1234',
+        )
+
+        response = self.client.post(
+            '/api/auth/login/',
+            {
+                'email': 'owner-auth-bad@example.com',
+                'password': 'bad-password',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['non_field_errors'][0], 'Identifiants invalides.')
+
+    def test_auth_me_requires_authentication(self):
+        response = self.client.get('/api/auth/me/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_auth_me_returns_current_user_profile(self):
+        user = User.objects.create_user(
+            username='client-auth',
+            email='client-auth@example.com',
+            password='testpass1234',
+            first_name='Awa',
+            last_name='Ndiaye',
+        )
+        garage = Garage.objects.create(name='Garage Me', slug='garage-me', owner=user)
+        user.profile.role = 'client'
+        user.profile.garage = garage
+        user.profile.save()
+
+        refresh = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.get('/api/auth/me/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], 'client-auth@example.com')
+        self.assertEqual(response.data['role'], 'client')
+
     def test_mecaniciens_list_is_filtered_by_garage(self):
         owner_a = User.objects.create_user(username='owner-a', password='testpass123')
         owner_b = User.objects.create_user(username='owner-b', password='testpass123')

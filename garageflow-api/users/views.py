@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
+    AuthLoginSerializer,
+    AuthRegisterSerializer,
     UserRegistrationSerializer,
     ProfileSerializer,
     UserUpdateSerializer,
@@ -17,6 +19,37 @@ from .serializers import (
 )
 from .permissions import IsGarageOwner
 from .services import get_user_garage, list_mecaniciens_for_garage
+from garages.models import Garage
+
+
+class AuthRegisterView(generics.CreateAPIView):
+    queryset = Garage.objects.all()
+    serializer_class = AuthRegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class AuthLoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = AuthLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data)
+
+
+class AuthLogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return Response(status=204)
+
+
+class AuthMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = ProfileSerializer(request.user.profile)
+        return Response(serializer.data)
 
 
 class UserRegistrationView(generics.CreateAPIView):

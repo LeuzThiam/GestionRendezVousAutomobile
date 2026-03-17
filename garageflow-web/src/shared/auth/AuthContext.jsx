@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+import { fetchCurrentUserRequest, logoutRequest } from '../../api/auth';
 import { fetchCurrentGarageRequest } from '../../api/garages';
-import { fetchUserProfileRequest, updateUserProfileRequest } from '../../api/users';
+import { updateUserProfileRequest } from '../../api/users';
 
 const AuthContext = createContext(null);
 
@@ -44,6 +45,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    logoutRequest().catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');
     persistUser(null);
@@ -55,7 +57,7 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      const profile = await fetchUserProfileRequest();
+      const profile = await fetchCurrentUserRequest();
       persistUser(profile);
       return profile;
     } catch (requestError) {

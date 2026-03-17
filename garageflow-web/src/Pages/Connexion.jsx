@@ -34,18 +34,20 @@ function Connexion() {
 
             <Formik
               initialValues={{
-                username: '',
+                email: '',
                 password: ''
               }}
               validate={(values) => {
                 const errors = {};
 
-                // Vérifier username
-                if (!values.username) {
-                  errors.username = 'Requis';
+                if (!values.email) {
+                  errors.email = 'Requis';
+                } else if (
+                  !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
+                ) {
+                  errors.email = 'Adresse email invalide';
                 }
 
-                // Vérifier password
                 if (!values.password) {
                   errors.password = 'Requis';
                 }
@@ -57,52 +59,43 @@ function Connexion() {
                 setSubmitting(true);
 
                 loginRequest({
-                    username: values.username,
+                    email: values.email,
                     password: values.password
                   })
                   .then((data) => {
-                    /*
-                      Réponse attendue :
-                      {
-                        "refresh": "...",
-                        "access": "...",
-                        "role": "client" ou "mecanicien"
-                      }
-                    */
-                    // Vérifier qu'on a un token d'accès
                     if (!data.access) {
                       throw new Error("Le serveur n'a pas renvoyé de token d'accès ('access').");
                     }
 
-                    // Vérifier le rôle
-                    if (!data.role) {
-                      throw new Error("Le serveur n'a pas renvoyé de rôle. Vérifiez votre API.");
+                    if (!data.user?.role) {
+                      throw new Error("Le serveur n'a pas renvoyé d'utilisateur valide.");
                     }
 
-                    // Créer un objet user, le stocker dans Redux
-                    const user = { ...data, role: data.role };
-                    login(user, { access: data.access, refresh: data.refresh });
+                    login(data.user, { access: data.access, refresh: data.refresh });
 
-                    // Redirection selon le rôle
-                    if (data.role === 'owner') {
+                    if (data.user.role === 'owner') {
                       navigate('/garage/dashboard');
                       return;
                     }
-                    if (data.role === 'client') {
+                    if (data.user.role === 'client') {
                       navigate('/profil/client');
                       return;
                     }
-                    if (data.role === 'mecanicien') {
+                    if (data.user.role === 'mecanicien') {
                       navigate('/profil/mecanicien');
                       return;
                     }
-                    setErrorMessage("Rôle inconnu. Impossible de rediriger.");
+                    setErrorMessage("Role inconnu. Impossible de rediriger.");
                   })
                   .catch((error) => {
-                    // Échec de la connexion
-                    setErrorMessage(
-                      "Informations de connexion invalides ou serveur indisponible."
-                    );
+                    const payload = error.response?.data;
+                    if (payload?.non_field_errors?.length) {
+                      setErrorMessage(payload.non_field_errors[0]);
+                    } else {
+                      setErrorMessage(
+                        "Identifiants invalides."
+                      );
+                    }
                     console.error('Erreur de connexion :', error.message);
                   })
                   .finally(() => {
@@ -120,19 +113,19 @@ function Connexion() {
                 errors
               }) => (
                 <Form onSubmit={handleSubmit}>
-                  <Form.Group controlId="formUsername" className="mb-3">
-                    <Form.Label>Nom d'utilisateur</Form.Label>
+                  <Form.Group controlId="formEmail" className="mb-3">
+                    <Form.Label>Email</Form.Label>
                     <Form.Control
-                      type="text"
-                      name="username"
-                      placeholder="Votre nom d'utilisateur"
-                      value={values.username}
+                      type="email"
+                      name="email"
+                      placeholder="Votre adresse email"
+                      value={values.email}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      isInvalid={touched.username && errors.username}
+                      isInvalid={touched.email && errors.email}
                     />
                     <Form.Control.Feedback type="invalid">
-                      {errors.username}
+                      {errors.email}
                     </Form.Control.Feedback>
                   </Form.Group>
 

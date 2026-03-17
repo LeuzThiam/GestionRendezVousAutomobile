@@ -2,9 +2,11 @@
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from .models import Profile
 from garages.models import Garage
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from .services import (
     assign_profile,
     create_mecanicien_for_garage,
@@ -12,6 +14,28 @@ from .services import (
     normalize_profile_role,
     update_user_and_profile,
 )
+from garages.serializers import GarageRegistrationSerializer
+
+
+def validate_unique_user_fields(*, username=None, email=None):
+    if username and User.objects.filter(username=username).exists():
+        raise serializers.ValidationError({'username': "Ce nom d'utilisateur existe deja."})
+    if email and User.objects.filter(email=email).exists():
+        raise serializers.ValidationError({'email': "Cette adresse courriel existe deja."})
+
+
+def validate_user_password(password, user=None):
+    try:
+        validate_password(password, user=user)
+    except Exception as exc:
+        messages = []
+        if hasattr(exc, 'messages'):
+            messages = exc.messages
+        elif hasattr(exc, 'error_list'):
+            messages = [str(item) for item in exc.error_list]
+        else:
+            messages = [str(exc)]
+        raise serializers.ValidationError({'password': messages})
 
 
 # == SERIALIZER DE CRÉATION D'UTILISATEUR ==
@@ -43,6 +67,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError("Les mots de passe ne correspondent pas.")
+        validate_unique_user_fields(username=attrs.get('username'), email=attrs.get('email'))
+        validate_user_password(attrs['password'])
         return attrs
 
     def create(self, validated_data):
@@ -156,6 +182,68 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
+class AuthUserSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source='profile.role', read_only=True)
+    garage_id = serializers.IntegerField(source='profile.garage_id', read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'role',
+            'garage_id',
+        ]
+
+
+class AuthLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    default_error_messages = {
+        'invalid_credentials': 'Identifiants invalides.',
+    }
+
+    def validate(self, attrs):
+        email = attrs['email'].strip().lower()
+        password = attrs['password']
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            self.fail('invalid_credentials')
+
+        if not user.check_password(password):
+            self.fail('invalid_credentials')
+
+        if not user.is_active:
+            self.fail('invalid_credentials')
+
+        refresh = RefreshToken.for_user(user)
+        attrs['user'] = user
+        attrs['access'] = str(refresh.access_token)
+        attrs['refresh'] = str(refresh)
+        return attrs
+
+    def to_representation(self, instance):
+        user = instance['user']
+        return {
+            'access': instance['access'],
+            'refresh': instance['refresh'],
+            'user': AuthUserSerializer(user).data,
+        }
+
+
+class AuthRegisterSerializer(GarageRegistrationSerializer):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        validate_user_password(attrs['password'])
+        return attrs
+
+
 # == (NOUVEAU) SERIALIZER DE LISTE USER / MECANICIENS ==
 class UserListSerializer(serializers.ModelSerializer):
     """
@@ -180,10 +268,8 @@ class MecanicienCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError("Les mots de passe ne correspondent pas.")
-        if User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError({'username': "Ce nom d'utilisateur existe deja."})
-        if User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({'email': "Cette adresse courriel existe deja."})
+        validate_unique_user_fields(username=attrs.get('username'), email=attrs.get('email'))
+        validate_user_password(attrs['password'])
         return attrs
 
     def create(self, validated_data):
