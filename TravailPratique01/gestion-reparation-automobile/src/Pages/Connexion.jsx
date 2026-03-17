@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { login } from '../features/userSlice';
 import { Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
+import { API_BASE_URL } from '../config/api';
 
 function Connexion() {
   const [errorMessage, setErrorMessage] = useState(null);
@@ -58,7 +59,7 @@ function Connexion() {
                 setSubmitting(true);
 
                 axios
-                  .post('http://127.0.0.1:8000/api/users/token/', {
+                  .post(`${API_BASE_URL}/api/users/token/`, {
                     username: values.username,
                     password: values.password
                   })

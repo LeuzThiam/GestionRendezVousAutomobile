@@ -1,13 +1,14 @@
 // src/features/facturesSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // Thunk asynchrone pour récupérer les factures depuis l’API
 export const fetchFactures = createAsyncThunk(
   'factures/fetchFactures',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/factures/', {
+      const res = await axios.get(`${API_BASE_URL}/api/factures/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`, // si besoin d'un token
         },

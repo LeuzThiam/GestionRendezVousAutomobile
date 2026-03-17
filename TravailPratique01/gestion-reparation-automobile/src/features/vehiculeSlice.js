@@ -1,6 +1,7 @@
 // src/features/vehicleSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const initialState = {
   vehicles: [], // Liste des véhicules
@@ -13,7 +14,7 @@ export const fetchVehicles = createAsyncThunk(
   'vehicles/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/vehicules/', {
+      const response = await axios.get(`${API_BASE_URL}/api/vehicules/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`, // si JWT nécessaire
         },

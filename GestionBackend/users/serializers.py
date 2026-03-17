@@ -78,14 +78,16 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     date_naissance = serializers.DateField(write_only=True, required=False)
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)
 
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'role', 'date_naissance']
+        fields = ['first_name', 'last_name', 'email', 'role', 'date_naissance']
 
     def update(self, instance, validated_data):
         first_name = validated_data.pop('first_name', None)
         last_name = validated_data.pop('last_name', None)
+        email = validated_data.pop('email', None)
         role = validated_data.pop('role', None)
         date_naissance = validated_data.pop('date_naissance', None)
 
@@ -94,6 +96,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             instance.first_name = first_name
         if last_name is not None:
             instance.last_name = last_name
+        if email is not None:
+            instance.email = email
         instance.save()
 
         # Mettre à jour le profil

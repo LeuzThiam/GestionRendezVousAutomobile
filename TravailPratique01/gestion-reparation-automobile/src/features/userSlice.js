@@ -2,13 +2,14 @@
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // --- Thunk #1 : Récupérer l'utilisateur depuis l’API
 export const fetchUser = createAsyncThunk(
   'user/fetchUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/api/users/profile/', {
+      const response = await axios.get(`${API_BASE_URL}/api/users/profile/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`, // si JWT nécessaire
         },
@@ -28,7 +29,7 @@ export const updateUserAsync = createAsyncThunk(
   async (updatedData, { rejectWithValue }) => {
     try {
       const response = await axios.patch(
-        'http://127.0.0.1:8000/api/users/profile/update/',
+        `${API_BASE_URL}/api/users/profile/update/`,
         updatedData,
         {
           headers: {
@@ -67,6 +68,9 @@ const userSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh');
+      localStorage.removeItem('user');
     },
     // Mise à jour locale (sans API)
     updateUser: (state, action) => {
@@ -104,6 +108,7 @@ const userSlice = createSlice({
       .addCase(updateUserAsync.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload; // user mis à jour depuis l'API
+        localStorage.setItem('user', JSON.stringify(action.payload));
       })
       .addCase(updateUserAsync.rejected, (state, action) => {
         state.loading = false;

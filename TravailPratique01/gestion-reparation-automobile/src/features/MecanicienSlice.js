@@ -1,6 +1,7 @@
 // src/features/mecanicienSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // Action asynchrone pour récupérer la liste des mécaniciens depuis l'API
 export const fetchMecaniciens = createAsyncThunk(
@@ -8,7 +9,7 @@ export const fetchMecaniciens = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://127.0.0.1:8000/api/users/mecaniciens/', {
+      const response = await axios.get(`${API_BASE_URL}/api/users/mecaniciens/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -22,6 +22,7 @@ import Menu from "./Pages/Menu.jsx";
 import Acceuil from "./Pages/Acceuil.jsx";
 import Inscription from "./Pages/Inscription.jsx";
 import Connexion from "./Pages/Connexion.jsx";
+import ProtectedRoute from "./ProtectedRoute.jsx";
 
 // Styles
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -48,21 +49,95 @@ function App() {
           <Route path="/" element={<Navigate to="/acceuil" replace />} />
 
           {/* PROFIL CLIENT */}
-          <Route path="/profil/client" element={<ProfileClient />} />
-          <Route path="/profil/client/vehicules" element={<GestionVehicule />} />
-          <Route path="/profil/client/rendez-vous" element={<RendezVous />} />
-          <Route path="/profil/client/paiement" element={<PaiementFacturation />} />
-          <Route path="/profil/client/AnnuaireMecanicien" element={<AnnuaireMecaniciens />} />
-          <Route path="/profil/client/rendez-vous-client" element={<ListeRendezVousClient />} />
-          <Route path="/profil/client/factures" element={<MesFactures />} />
+          <Route
+            path="/profil/client"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ProfileClient />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/client/vehicules"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <GestionVehicule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/client/rendez-vous"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <RendezVous />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/client/paiement"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <PaiementFacturation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/client/AnnuaireMecanicien"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <AnnuaireMecaniciens />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/client/rendez-vous-client"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <ListeRendezVousClient />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/client/factures"
+            element={
+              <ProtectedRoute allowedRoles={["client"]}>
+                <MesFactures />
+              </ProtectedRoute>
+            }
+          />
 
           {/* PROFIL MECANICIEN */}
-          <Route path="/profil/mecanicien" element={<ProfileMecanicien />} />
-          <Route path="/profil/mecanicien/BilanMecanicien" element={<BilanMecanicien />} />
-          <Route path="/profil/mecanicien/vehicules" element={<GestionVehicule />} />
+          <Route
+            path="/profil/mecanicien"
+            element={
+              <ProtectedRoute allowedRoles={["mecanicien"]}>
+                <ProfileMecanicien />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/mecanicien/BilanMecanicien"
+            element={
+              <ProtectedRoute allowedRoles={["mecanicien"]}>
+                <BilanMecanicien />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profil/mecanicien/vehicules"
+            element={
+              <ProtectedRoute allowedRoles={["mecanicien"]}>
+                <GestionVehicule />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profil/mecanicien/rendez-vous-mecanicien"
-            element={<ListeRendezVousMecanicien />}
+            element={
+              <ProtectedRoute allowedRoles={["mecanicien"]}>
+                <ListeRendezVousMecanicien />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Card, Button, Modal, Form, Container, Row, Col, Alert } from 'react-bootstrap';
+import { API_BASE_URL } from '../config/api';
 
 function ListeRendezVousClient() {
   const [rendezVousList, setRendezVousList] = useState([]);
@@ -18,7 +19,7 @@ function ListeRendezVousClient() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get('http://127.0.0.1:8000/api/rendezvous/', {
+      const res = await axios.get(`${API_BASE_URL}/api/rendezvous/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -42,7 +43,7 @@ function ListeRendezVousClient() {
     try {
       setLoading(true);
       await axios.patch(
-        `http://127.0.0.1:8000/api/rendezvous/${rdv.id}/`,
+        `${API_BASE_URL}/api/rendezvous/${rdv.id}/`,
         { status: 'cancelled' },
         {
           headers: {
@@ -82,7 +83,7 @@ function ListeRendezVousClient() {
     try {
       setLoading(true);
       await axios.patch(
-        `http://127.0.0.1:8000/api/rendezvous/${selectedRdv.id}/`,
+        `${API_BASE_URL}/api/rendezvous/${selectedRdv.id}/`,
         {
           date: newDateTime,
           status: 'modification_requested',

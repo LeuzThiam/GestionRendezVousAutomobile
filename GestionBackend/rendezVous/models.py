@@ -25,9 +25,17 @@ class RendezVous(models.Model):
         on_delete=models.CASCADE,
         related_name='rendezvous_mecanicien'
     )
+    vehicule = models.ForeignKey(
+        'vehicules.Vehicule',
+        on_delete=models.CASCADE,
+        related_name='rendezvous',
+        null=True,
+        blank=True
+    )
     date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
     description = models.TextField(blank=True)
+    reason = models.TextField(blank=True)
 
     estimatedTime = models.DecimalField(
         max_digits=5, 

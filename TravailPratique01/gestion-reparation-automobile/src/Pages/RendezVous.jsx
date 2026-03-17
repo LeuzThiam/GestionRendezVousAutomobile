@@ -7,6 +7,7 @@ import { addRendezVous } from '../features/rendezVousSlice';
 import { fetchVehicles } from '../features/vehiculeSlice'; 
 import { Form, Button, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 function RendezVous() {
   const [date, setDate] = useState('');
@@ -60,7 +61,7 @@ function RendezVous() {
       dispatch(setLoading(true));
 
       // POST => API
-      const { data } = await axios.post('http://127.0.0.1:8000/api/rendezvous/', newRendezVousData, {
+      const { data } = await axios.post(`${API_BASE_URL}/api/rendezvous/`, newRendezVousData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',

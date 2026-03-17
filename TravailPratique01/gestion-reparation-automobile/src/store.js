@@ -12,7 +12,13 @@ import vehicleSlice from './features/vehiculeSlice';
 // Importez aussi mecanicienSlice si nécessaire
 import mecanicienSlice from './features/mecanicienSlice';
 
-const userFromStorage = JSON.parse(localStorage.getItem('user')) || null;
+let userFromStorage = null;
+
+try {
+  userFromStorage = JSON.parse(localStorage.getItem('user')) || null;
+} catch {
+  userFromStorage = null;
+}
 
 const store = configureStore({
   reducer: {
@@ -29,6 +35,9 @@ const store = configureStore({
     user: {
       user: userFromStorage,
       isAuthenticated: !!userFromStorage,
+      paymentInfo: null,
+      loading: false,
+      error: null,
     },
   },
 });
