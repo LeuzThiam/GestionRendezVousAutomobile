@@ -1,34 +1,105 @@
 # GestionRendezVousAutomobile
 
-Projet de gestion de rendez-vous automobile compose de deux applications:
+Application SaaS MVP de gestion de garage automobile, composee de deux projets:
 
-- `garageflow-api/` : API Django REST
+- `garageflow-api/` : backend Django REST
 - `garageflow-web/` : frontend React avec Vite
 
-## Structure
+Le produit est pense pour un mode multi-garage:
+
+- un proprietaire cree son garage
+- il gere son equipe mecanique
+- ses clients reservent des rendez-vous
+- les donnees restent separees par garage
+
+## Architecture
 
 ### Backend
 
-- gestion des garages
+Le backend est organise autour de domaines metier simples:
+
+- `garages`
+- `users`
+- `vehicules`
+- `rendez_vous`
+
+Fonctions principales:
+
 - authentification JWT
-- gestion des utilisateurs
+- inscription d un proprietaire de garage
+- gestion du profil utilisateur
+- gestion des mecaniciens par garage
 - gestion des vehicules
 - gestion des rendez-vous
+- filtrage des donnees par garage
 
 ### Frontend
 
-- connexion et inscription
-- creation d'un garage et du compte proprietaire
-- tableau de bord proprietaire minimal
-- page publique de reservation par garage
-- profils client et mecanicien
+Le frontend repose sur:
+
+- React 18
+- React Router
+- React Bootstrap
+- Axios
+- une couche `src/api/` par domaine
+- un `AuthContext` pour la session utilisateur
+
+Le frontend ne depend plus de Redux.
+
+## Fonctionnalites MVP
+
+### Proprietaire
+
+- inscription avec creation du garage
+- connexion
+- tableau de bord garage
+- lien public de reservation
+- gestion des mecaniciens
+
+### Client
+
+- connexion
 - gestion des vehicules
-- prise et suivi des rendez-vous
-- paiement et facturation
+- prise de rendez-vous
+- consultation de ses rendez-vous
+
+### Mecanicien
+
+- connexion
+- consultation et traitement de ses rendez-vous
+
+## Endpoints principaux
+
+### Authentification
+
+- `POST /api/auth/register/`
+- `POST /api/auth/login/`
+- `POST /api/auth/refresh/`
+- `POST /api/auth/logout/`
+- `GET /api/auth/me/`
+
+### Garage
+
+- `GET /api/garages/me/`
+- `GET /api/garages/public/<slug>/`
+
+### Metier
+
+- `GET /api/users/mecaniciens/`
+- `GET /api/users/owner/mecaniciens/`
+- `POST /api/users/owner/mecaniciens/`
+- `DELETE /api/users/owner/mecaniciens/<id>/`
+- `GET /api/vehicules/`
+- `POST /api/vehicules/`
+- `PUT /api/vehicules/<id>/`
+- `DELETE /api/vehicules/<id>/`
+- `GET /api/rendezvous/`
+- `POST /api/rendezvous/`
+- `PATCH /api/rendezvous/<id>/`
 
 ## Demarrage local
 
-### Backend Django
+## Backend Django
 
 Depuis `garageflow-api/`:
 
@@ -37,12 +108,12 @@ python -m venv env
 env\Scripts\activate
 pip install -r requirements-ci.txt
 python manage.py migrate
-python manage.py runserver
+python manage.py runserver 127.0.0.1:8000
 ```
 
-Le backend utilise SQLite par defaut si `MYSQL_DATABASE` n'est pas defini.
+Le backend utilise SQLite par defaut si `MYSQL_DATABASE` n est pas defini.
 
-### Frontend React
+## Frontend React
 
 Depuis `garageflow-web/`:
 
@@ -51,11 +122,13 @@ npm install
 npm run dev
 ```
 
-## Variables d'environnement
+Le frontend est disponible par defaut sur `http://127.0.0.1:5173/` ou `http://localhost:5173/`.
+
+## Variables d environnement
 
 ### Backend
 
-Copier `garageflow-api/.env.example` et definir au besoin:
+Copier `garageflow-api/.env.example` puis definir si necessaire:
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG`
@@ -67,50 +140,60 @@ Copier `garageflow-api/.env.example` et definir au besoin:
 - `MYSQL_HOST`
 - `MYSQL_PORT`
 
+En developpement, la configuration CORS accepte `localhost` et `127.0.0.1` sur ports locaux.
+
 ### Frontend
 
-Copier `garageflow-web/.env.example` et definir:
+Definir si besoin:
 
 - `VITE_API_URL`
 
+Par defaut, le frontend pointe vers `http://127.0.0.1:8000`.
+
+## Verification locale
+
+### Backend
+
+Depuis `garageflow-api/`:
+
+```bash
+python manage.py test users garages rendez_vous vehicules
+```
+
+### Frontend
+
+Depuis `garageflow-web/`:
+
+```bash
+npm run build
+```
+
 ## CI
 
-Une workflow GitHub Actions verifie:
+Le workflow GitHub Actions verifie:
 
 - installation du frontend
 - build React
-- installation des dependances Django
+- installation des dependances backend
 - migrations Django
 - tests Django
 
-Voir `.github/workflows/ci.yml`.
+Voir [ci.yml](/abs/path/c:/Users/modou/OneDrive/Documents/COURS/BacInformatiqueUQAR/Revision/MesProjets/GestionRendezVousAutomobile/.github/workflows/ci.yml).
 
 ## Workflow Git
 
-Le projet suit un workflow par branches:
+Le projet suit un workflow simple:
 
-- `master` : stable
+- `master` : branche stable
 - `dev` : integration
-- `feature/...` : fonctionnalites
-- `fix/...` : corrections
+- `feature/...` : nouvelle fonctionnalite
+- `fix/...` : correction
 
 Regles:
 
-- ne pas coder directement sur `master`
-- ouvrir une Pull Request pour chaque branche
+- ne jamais coder directement sur `master`
+- faire une branche par tache
 - ecrire les commits en francais
-- garder des commits courts et clairs
+- ouvrir une Pull Request avant merge
 
-Le detail est documente dans `CONTRIBUTING.md`.
-
-## Base MVP SaaS
-
-Le backend prepare maintenant une base multi-garage:
-
-- un garage peut etre cree via `POST /api/garages/register/`
-- un proprietaire de garage est cree avec le role `owner`
-- les profils utilisateurs peuvent etre rattaches a un garage
-- les mecaniciens sont listes par garage
-- les vehicules et rendez-vous sont rattaches a un garage
-- le frontend expose un ecran `/garage/dashboard` pour le proprietaire
-- une page publique `/garage/:slug/reservation` permet de consulter un garage et de reserver si le client appartient au meme garage
+Le detail est documente dans [CONTRIBUTING.md](/abs/path/c:/Users/modou/OneDrive/Documents/COURS/BacInformatiqueUQAR/Revision/MesProjets/GestionRendezVousAutomobile/CONTRIBUTING.md).
