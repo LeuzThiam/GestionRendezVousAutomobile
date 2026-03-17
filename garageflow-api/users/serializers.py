@@ -5,6 +5,13 @@ from django.contrib.auth.models import User
 from .models import Profile
 from garages.models import Garage
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .services import (
+    assign_profile,
+    create_mecanicien_for_garage,
+    create_basic_user,
+    normalize_profile_role,
+    update_user_and_profile,
+)
 
 
 # == SERIALIZER DE CRÉATION D'UTILISATEUR ==
@@ -49,18 +56,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         garage = profile_data.get('garage')
         date_naissance = validated_data.pop('date_naissance', None)
 
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-
-        # Mise à jour / création du profil
-        profile = user.profile  # créé via signal (si configuré)
-        profile.role = role if role in ['owner', 'client', 'mecanicien'] else 'client'
-        if garage is not None:
-            profile.garage = garage
-        if date_naissance:
-            profile.date_naissance = date_naissance
-        profile.save()
+        user = create_basic_user(password=password, **validated_data)
+        assign_profile(
+            user,
+            role=normalize_profile_role(role),
+            garage=garage,
+            date_naissance=date_naissance,
+        )
 
         return user
 
@@ -123,26 +125,15 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         garage = profile_data.get('garage') if profile_data else None
         date_naissance = validated_data.pop('date_naissance', None)
 
-        # Mettre à jour l'utilisateur
-        if first_name is not None:
-            instance.first_name = first_name
-        if last_name is not None:
-            instance.last_name = last_name
-        if email is not None:
-            instance.email = email
-        instance.save()
-
-        # Mettre à jour le profil
-        profile = instance.profile
-        if role is not None:
-            profile.role = role if role in ['owner', 'client', 'mecanicien'] else profile.role
-        if garage is not None:
-            profile.garage = garage
-        if date_naissance is not None:
-            profile.date_naissance = date_naissance
-        profile.save()
-
-        return instance
+        return update_user_and_profile(
+            instance,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            role=role,
+            garage=garage,
+            date_naissance=date_naissance,
+        )
 
 
 # == SERIALIZER POUR SIMPLEJWT (TOKEN) ==
@@ -199,17 +190,7 @@ class MecanicienCreateSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         validated_data.pop('password2')
 
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-
-        garage = self.context['garage']
-        profile = user.profile
-        profile.role = 'mecanicien'
-        profile.garage = garage
-        profile.save()
-
-        return user
+        return create_mecanicien_for_garage(garage=self.context['garage'], password=password, **validated_data)
 
 
 # -- Optionnel: Un Serializer plus complet pour le CRUD d'un user --

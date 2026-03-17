@@ -4,48 +4,20 @@ from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
 from .models import RendezVous
 from .serializers import RendezVousSerializer
+from .permissions import IsClientForCreate
+from .services import get_rendezvous_creation_payload, get_rendezvous_queryset_for_user
 
 
 class RendezVousViewSet(viewsets.ModelViewSet):
     queryset = RendezVous.objects.all()
     serializer_class = RendezVousSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsClientForCreate]
 
     def get_queryset(self):
-        """
-        Filtre la liste des rendez-vous en fonction du rôle du user.
-        - Si user.profile.role == 'client', on renvoie uniquement ses propres rendez-vous.
-        - Si user.profile.role == 'mecanicien', on renvoie uniquement les rendez-vous qui lui sont attribués.
-        - Si superuser (admin), on renvoie tous.
-        """
-        qs = super().get_queryset()
-        user = self.request.user
-        garage = getattr(getattr(user, 'profile', None), 'garage', None)
-
-        if garage is not None:
-            qs = qs.filter(garage=garage)
-
-        # Vérifier que le user possède un profil
-        # (Supposons un modèle Profile avec un champ 'role' = [client, mecanicien, ...])
-        if hasattr(user, 'profile'):
-            role = user.profile.role
-            if role == 'client':
-                # Filtrer sur client = user
-                qs = qs.filter(client=user)
-            elif role == 'mecanicien':
-                # Filtrer sur mecanicien = user
-                qs = qs.filter(mecanicien=user)
-            # Si c'est un superuser ou un autre rôle, on laisse tout
-            # (ou on peut gérer d'autres conditions)
-        return qs
+        return get_rendezvous_queryset_for_user(self.request.user)
 
     def perform_create(self, serializer):
-        """
-        Lors de la création d'un rendez-vous, on peut imposer le 'client' = user connecté
-        (si on veut que seul un 'client' puisse créer un RDV pour lui-même).
-        """
-        if not hasattr(self.request.user, 'profile') or self.request.user.profile.role != 'client':
-            raise PermissionDenied("Seul un client peut creer un rendez-vous.")
-        if self.request.user.profile.garage is None:
+        payload = get_rendezvous_creation_payload(self.request.user)
+        if payload['garage'] is None:
             raise PermissionDenied("Le client doit appartenir a un garage pour creer un rendez-vous.")
-        serializer.save(client=self.request.user, garage=self.request.user.profile.garage)
+        serializer.save(**payload)
