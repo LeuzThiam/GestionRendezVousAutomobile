@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',    # Pour Django REST Framework
+    'garages',
     'users',             # App pour la gestion des utilisateurs
     'vehicules',          # App pour la gestion des véhicules
     'rendezVous',      # App pour la gestion des rendez-vous

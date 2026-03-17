@@ -20,6 +20,10 @@ class RendezVousViewSet(viewsets.ModelViewSet):
         """
         qs = super().get_queryset()
         user = self.request.user
+        garage = getattr(getattr(user, 'profile', None), 'garage', None)
+
+        if garage is not None:
+            qs = qs.filter(garage=garage)
 
         # Vérifier que le user possède un profil
         # (Supposons un modèle Profile avec un champ 'role' = [client, mecanicien, ...])
@@ -42,4 +46,6 @@ class RendezVousViewSet(viewsets.ModelViewSet):
         """
         if not hasattr(self.request.user, 'profile') or self.request.user.profile.role != 'client':
             raise PermissionDenied("Seul un client peut creer un rendez-vous.")
-        serializer.save(client=self.request.user)
+        if self.request.user.profile.garage is None:
+            raise PermissionDenied("Le client doit appartenir a un garage pour creer un rendez-vous.")
+        serializer.save(client=self.request.user, garage=self.request.user.profile.garage)

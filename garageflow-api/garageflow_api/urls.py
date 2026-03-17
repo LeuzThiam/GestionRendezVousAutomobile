@@ -44,6 +44,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Applications de l'API
+    path('api/garages/', include('garages.urls')),
     path('api/users/', include('users.urls')),
     path('api/rendezvous/', include('rendezVous.urls')),
     path('api/factures/', include('factures.urls')),

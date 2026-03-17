@@ -9,6 +9,7 @@ Projet de gestion de rendez-vous automobile compose de deux applications:
 
 ### Backend
 
+- gestion des garages
 - authentification JWT
 - gestion des utilisateurs
 - gestion des vehicules
@@ -99,3 +100,13 @@ Regles:
 - garder des commits courts et clairs
 
 Le detail est documente dans `CONTRIBUTING.md`.
+
+## Base MVP SaaS
+
+Le backend prepare maintenant une base multi-garage:
+
+- un garage peut etre cree via `POST /api/garages/register/`
+- un proprietaire de garage est cree avec le role `owner`
+- les profils utilisateurs peuvent etre rattaches a un garage
+- les mecaniciens sont listes par garage
+- les vehicules et rendez-vous sont rattaches a un garage

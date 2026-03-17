@@ -8,6 +8,7 @@ class VehiculeSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'owner',
+            'garage',
             'marque',
             'modele',
             'annee',
@@ -15,4 +16,4 @@ class VehiculeSerializer(serializers.ModelSerializer):
             'body_class',
             'vehicle_type'
         ]
-        read_only_fields = ['id', 'owner']
+        read_only_fields = ['id', 'owner', 'garage']

@@ -6,18 +6,47 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from garages.models import Garage
 from rendezVous.models import RendezVous
 from vehicules.models import Vehicule
 
 
 class RendezVousApiTests(APITestCase):
     def setUp(self):
+        self.garage = Garage.objects.create(
+            name='Garage Principal',
+            slug='garage-principal',
+            owner=User.objects.create_user(
+                username='owner-main',
+                password='testpass123',
+                email='owner-main@example.com',
+            ),
+        )
+        self.second_garage = Garage.objects.create(
+            name='Garage Secondaire',
+            slug='garage-secondaire',
+            owner=User.objects.create_user(
+                username='owner-second',
+                password='testpass123',
+                email='owner-second@example.com',
+            ),
+        )
+
+        self.garage.owner.profile.role = 'owner'
+        self.garage.owner.profile.garage = self.garage
+        self.garage.owner.profile.save()
+
+        self.second_garage.owner.profile.role = 'owner'
+        self.second_garage.owner.profile.garage = self.second_garage
+        self.second_garage.owner.profile.save()
+
         self.client_user = User.objects.create_user(
             username='client1',
             password='testpass123',
             email='client@example.com',
         )
         self.client_user.profile.role = 'client'
+        self.client_user.profile.garage = self.garage
         self.client_user.profile.save()
 
         self.other_client = User.objects.create_user(
@@ -26,6 +55,7 @@ class RendezVousApiTests(APITestCase):
             email='client2@example.com',
         )
         self.other_client.profile.role = 'client'
+        self.other_client.profile.garage = self.second_garage
         self.other_client.profile.save()
 
         self.mecanicien = User.objects.create_user(
@@ -34,6 +64,7 @@ class RendezVousApiTests(APITestCase):
             email='mecano@example.com',
         )
         self.mecanicien.profile.role = 'mecanicien'
+        self.mecanicien.profile.garage = self.garage
         self.mecanicien.profile.save()
 
         self.other_mecanicien = User.objects.create_user(
@@ -42,10 +73,12 @@ class RendezVousApiTests(APITestCase):
             email='mecano2@example.com',
         )
         self.other_mecanicien.profile.role = 'mecanicien'
+        self.other_mecanicien.profile.garage = self.second_garage
         self.other_mecanicien.profile.save()
 
         self.vehicle = Vehicule.objects.create(
             owner=self.client_user,
+            garage=self.garage,
             marque='Toyota',
             modele='Corolla',
             annee=2020,
@@ -53,6 +86,7 @@ class RendezVousApiTests(APITestCase):
         )
         self.other_vehicle = Vehicule.objects.create(
             owner=self.other_client,
+            garage=self.second_garage,
             marque='Honda',
             modele='Civic',
             annee=2021,
@@ -97,6 +131,7 @@ class RendezVousApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('mecanicien', response.data)
         self.assertIn('vehicule', response.data)
 
     def test_mecanicien_cannot_create_rendezvous(self):

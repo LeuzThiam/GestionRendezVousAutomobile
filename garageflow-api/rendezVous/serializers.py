@@ -20,6 +20,7 @@ class RendezVousSerializer(serializers.ModelSerializer):
         model = RendezVous
         fields = [
             'id',
+            'garage',
             'client',
             'mecanicien',
             'vehicule',
@@ -34,6 +35,7 @@ class RendezVousSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
+            'garage',
             'client',
             'vehicle',
             'symptomes',
@@ -50,7 +52,9 @@ class RendezVousSerializer(serializers.ModelSerializer):
             return attrs
 
         user = request.user
-        role = getattr(getattr(user, 'profile', None), 'role', None)
+        profile = getattr(user, 'profile', None)
+        role = getattr(profile, 'role', None)
+        user_garage = getattr(profile, 'garage', None)
         instance = self.instance
 
         mecanicien = attrs.get('mecanicien', getattr(instance, 'mecanicien', None))
@@ -61,8 +65,13 @@ class RendezVousSerializer(serializers.ModelSerializer):
         quote = attrs.get('quote')
         reason = attrs.get('reason')
 
+        if user_garage is None and not user.is_superuser:
+            raise serializers.ValidationError("L'utilisateur doit appartenir a un garage.")
+
         if mecanicien and getattr(getattr(mecanicien, 'profile', None), 'role', None) != 'mecanicien':
             raise serializers.ValidationError({'mecanicien': "L'utilisateur choisi doit etre un mecanicien."})
+        if mecanicien and getattr(getattr(mecanicien, 'profile', None), 'garage_id', None) != getattr(user_garage, 'id', None):
+            raise serializers.ValidationError({'mecanicien': "Le mecanicien doit appartenir au meme garage."})
 
         if date is not None:
             if date < timezone.now():
@@ -70,6 +79,8 @@ class RendezVousSerializer(serializers.ModelSerializer):
 
         if vehicule and vehicule.owner_id != user.id and (instance is None or role == 'client'):
             raise serializers.ValidationError({'vehicule': "Vous ne pouvez utiliser qu'un vehicule qui vous appartient."})
+        if vehicule and vehicule.garage_id != getattr(user_garage, 'id', None):
+            raise serializers.ValidationError({'vehicule': "Le vehicule doit appartenir au meme garage."})
 
         if instance is None:
             if role != 'client':
@@ -102,6 +113,8 @@ class RendezVousSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("La confirmation doit inclure une duree estimee et un devis.")
             if status == 'rejected' and not attrs.get('reason', getattr(instance, 'reason', '')):
                 raise serializers.ValidationError({'reason': "Une raison est requise pour refuser un rendez-vous."})
+            if instance and instance.garage_id != getattr(user_garage, 'id', None):
+                raise serializers.ValidationError("Le mecanicien ne peut agir que sur les rendez-vous de son garage.")
 
         elif not user.is_superuser:
             raise serializers.ValidationError("Role utilisateur non autorise pour cette action.")

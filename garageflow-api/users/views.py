@@ -79,7 +79,11 @@ class MecanicienListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]  # ou [AllowAny], selon besoin
 
     def get_queryset(self):
-        return User.objects.filter(profile__role='mecanicien')
+        garage = getattr(self.request.user.profile, 'garage', None)
+        queryset = User.objects.filter(profile__role='mecanicien')
+        if garage is not None:
+            queryset = queryset.filter(profile__garage=garage)
+        return queryset
 
 
 # == NOUVEAU : Lire/Mettre à jour/Supprimer un utilisateur par son ID ==

@@ -15,6 +15,13 @@ STATUS_CHOICES = (
 )
 
 class RendezVous(models.Model):
+    garage = models.ForeignKey(
+        'garages.Garage',
+        on_delete=models.SET_NULL,
+        related_name='rendezvous',
+        null=True,
+        blank=True
+    )
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
