@@ -1,5 +1,5 @@
+export * from './api';
 export * from './auth';
-export * from './client';
 export * from './garages';
 export * from './mecaniciens';
 export * from './rendezVous';
