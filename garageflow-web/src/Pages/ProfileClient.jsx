@@ -11,23 +11,18 @@ import {
   faEdit,
   faCar,
   faCalendarAlt,
-  faCreditCard,
-  faFileInvoice,
 } from '@fortawesome/free-solid-svg-icons';
 
 import GestionVehicules from './GestionVehicule';
 import MesRendezVous from './RendezVous';
 import RendezVousClient from './ListeRendezVousClient';
-import PaiementFacturation from './PaiementFacturation';
-import MesFactures from './MesFactures';
 
 import './style.css';
 
 function ProfileClient() {
   const dispatch = useDispatch();
 
-  // Récupère user, paymentInfo, etc. depuis Redux
-  const { user: currentUser, paymentInfo, loading, error } = useSelector((state) => state.user);
+  const { user: currentUser, loading, error } = useSelector((state) => state.user);
 
   const [selectedComponent, setSelectedComponent] = useState('edit');
   const [isEditing, setIsEditing] = useState(false);
@@ -129,17 +124,6 @@ function ProfileClient() {
                 </Nav.Link>
 
                 <Nav.Link
-                  onClick={() => handleComponentSelect('paiement')}
-                  className={`d-flex align-items-center py-2 custom-nav-link ${
-                    selectedComponent === 'paiement' ? 'active' : ''
-                  }`}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <FontAwesomeIcon icon={faCreditCard} className="me-2 text-warning" />
-                  Paiement et facturation
-                </Nav.Link>
-
-                <Nav.Link
                   onClick={() => handleComponentSelect('rendez-vous-client')}
                   className={`d-flex align-items-center py-2 custom-nav-link ${
                     selectedComponent === 'rendez-vous-client' ? 'active' : ''
@@ -150,16 +134,6 @@ function ProfileClient() {
                   Mes Rendez-vous
                 </Nav.Link>
 
-                <Nav.Link
-                  onClick={() => handleComponentSelect('factures')}
-                  className={`d-flex align-items-center py-2 custom-nav-link ${
-                    selectedComponent === 'factures' ? 'active' : ''
-                  }`}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <FontAwesomeIcon icon={faFileInvoice} className="me-2 text-secondary" />
-                  Mes Factures
-                </Nav.Link>
               </Nav>
             </Card.Body>
           </Card>
@@ -257,9 +231,7 @@ function ProfileClient() {
 
           {selectedComponent === 'vehicules' && <GestionVehicules />}
           {selectedComponent === 'rendez-vous' && <MesRendezVous />}
-          {selectedComponent === 'paiement' && <PaiementFacturation />}
           {selectedComponent === 'rendez-vous-client' && <RendezVousClient />}
-          {selectedComponent === 'factures' && <MesFactures />}
         </Col>
       </Row>
     </Container>

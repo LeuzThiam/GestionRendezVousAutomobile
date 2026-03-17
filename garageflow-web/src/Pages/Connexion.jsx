@@ -1,12 +1,11 @@
 // src/Pages/Connexion.jsx
 import React, { useState } from 'react';
 import { Formik } from 'formik';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { login } from '../features/userSlice';
 import { Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
-import { API_BASE_URL } from '../config/api';
+import { loginRequest } from '../shared/api/authApi';
 
 function Connexion() {
   const [errorMessage, setErrorMessage] = useState(null);
@@ -58,12 +57,11 @@ function Connexion() {
                 setErrorMessage(null);
                 setSubmitting(true);
 
-                axios
-                  .post(`${API_BASE_URL}/api/users/token/`, {
+                loginRequest({
                     username: values.username,
                     password: values.password
                   })
-                  .then((response) => {
+                  .then((data) => {
                     /*
                       Réponse attendue :
                       {
@@ -72,8 +70,6 @@ function Connexion() {
                         "role": "client" ou "mecanicien"
                       }
                     */
-                    const data = response.data;
-
                     // Vérifier qu'on a un token d'accès
                     if (!data.access) {
                       throw new Error("Le serveur n'a pas renvoyé de token d'accès ('access').");

@@ -1,8 +1,8 @@
 // src/features/userSlice.js
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
+import { fetchCurrentGarageRequest } from '../shared/api/garageApi';
+import { fetchUserProfileRequest, updateUserProfileRequest } from '../shared/api/userApi';
 
 const persistedUser = (() => {
   try {
@@ -17,12 +17,7 @@ export const fetchUser = createAsyncThunk(
   'user/fetchUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/users/profile/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`, // si JWT nécessaire
-        },
-      });
-      return response.data; // user renvoyé par l’API
+      return await fetchUserProfileRequest();
     } catch (err) {
       return rejectWithValue(
         err.response?.data || 'Impossible de récupérer les informations utilisateur.'
@@ -35,12 +30,7 @@ export const fetchCurrentGarage = createAsyncThunk(
   'user/fetchCurrentGarage',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/garages/me/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      return response.data;
+      return await fetchCurrentGarageRequest();
     } catch (err) {
       return rejectWithValue(
         err.response?.data || 'Impossible de récupérer les informations du garage.'
@@ -54,17 +44,7 @@ export const updateUserAsync = createAsyncThunk(
   'user/updateUser',
   async (updatedData, { rejectWithValue }) => {
     try {
-      const response = await axios.patch(
-        `${API_BASE_URL}/api/users/profile/update/`,
-        updatedData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      return response.data; // user mis à jour
+      return await updateUserProfileRequest(updatedData);
     } catch (err) {
       return rejectWithValue(
         err.response?.data || 'Impossible de mettre à jour votre profil.'
@@ -77,7 +57,6 @@ const initialState = {
   user: persistedUser,
   isAuthenticated: !!persistedUser,
   currentGarage: null,
-  paymentInfo: null,
   loading: false,
   error: null,
 };
@@ -104,10 +83,6 @@ const userSlice = createSlice({
     // Mise à jour locale (sans API)
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
-    },
-    // Infos de paiement (sans API)
-    updatePaymentInfo: (state, action) => {
-      state.paymentInfo = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -159,5 +134,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { login, logout, updateUser, updatePaymentInfo } = userSlice.actions;
+export const { login, logout, updateUser } = userSlice.actions;
 export default userSlice.reducer;

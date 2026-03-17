@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Card, Button, Modal, Form, Container, Row, Col, Alert } from 'react-bootstrap';
-import { API_BASE_URL } from '../config/api';
+import { fetchRendezVousRequest, updateRendezVousRequest } from '../shared/api/rendezVousApi';
 
 function ListeRendezVousMecanicien() {
   const [rendezVousList, setRendezVousList] = useState([]);
@@ -19,12 +18,7 @@ function ListeRendezVousMecanicien() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get(`${API_BASE_URL}/api/rendezvous/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      setRendezVousList(res.data);
+      setRendezVousList(await fetchRendezVousRequest());
     } catch (err) {
       console.error('Erreur lors du fetch (mécanicien) :', err);
       setError("Impossible de récupérer la liste des rendez-vous (Mécanicien).");
@@ -55,15 +49,7 @@ function ListeRendezVousMecanicien() {
 
     try {
       setLoading(true);
-      await axios.patch(
-        `${API_BASE_URL}/api/rendezvous/${rdv.id}/`,
-        { status: 'rejected', reason },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      await updateRendezVousRequest(rdv.id, { status: 'rejected', reason });
 
       // Actualiser localement
       setRendezVousList((prev) =>
@@ -103,19 +89,11 @@ function ListeRendezVousMecanicien() {
 
     try {
       setLoading(true);
-      await axios.patch(
-        `${API_BASE_URL}/api/rendezvous/${rdv.id}/`,
-        {
-          status: 'confirmed',
-          estimatedTime,
-          quote,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      await updateRendezVousRequest(rdv.id, {
+        status: 'confirmed',
+        estimatedTime,
+        quote,
+      });
 
       // Actualiser localement dans l'état
       setRendezVousList((prev) =>
@@ -150,18 +128,10 @@ function ListeRendezVousMecanicien() {
     try {
       setLoading(true);
       // On repasse le statut à "confirmed" (et on garde la date modifiée par le client)
-      await axios.patch(
-        `${API_BASE_URL}/api/rendezvous/${selectedRdv.id}/`,
-        {
-          date: selectedRdv.date,
-          status: 'confirmed',
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      await updateRendezVousRequest(selectedRdv.id, {
+        date: selectedRdv.date,
+        status: 'confirmed',
+      });
 
       // Mise à jour local
       setRendezVousList((prev) =>
@@ -190,18 +160,9 @@ function ListeRendezVousMecanicien() {
     try {
       setLoading(true);
       // Annuler la modif => re-statut 'confirmed'
-      await axios.patch(
-        `${API_BASE_URL}/api/rendezvous/${selectedRdv.id}/`,
-        {
-          // date: oldDate si vous voulez la restaurer,
-          status: 'confirmed',
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      await updateRendezVousRequest(selectedRdv.id, {
+        status: 'confirmed',
+      });
 
       setRendezVousList((prev) =>
         prev.map((r) =>

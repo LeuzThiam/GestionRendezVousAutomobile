@@ -7,13 +7,11 @@ import ProfileMecanicien from "./Pages/ProfileMecanicien.jsx";
 
 // Composants annexes
 import GestionVehicule from "./Pages/GestionVehicule.jsx";
-import PaiementFacturation from "./Pages/PaiementFacturation.jsx";
 import RendezVous from "./Pages/RendezVous.jsx";
 import BilanMecanicien from "./Pages/BilanMecanicien.jsx";
 import ListeRendezVousClient from "./Pages/ListeRendezVousClient.jsx";
 import ListeRendezVousMecanicien from "./Pages/ListeRendezVousMecanicien.jsx";
 import AnnuaireMecaniciens from "./Pages/AnnuaireMecaniciens.jsx";
-import MesFactures from "./Pages/MesFactures.jsx";
 
 // Menu (Navbar)
 import Menu from "./Pages/Menu.jsx";
@@ -95,11 +93,7 @@ function App() {
           />
           <Route
             path="/profil/client/paiement"
-            element={
-              <ProtectedRoute allowedRoles={["client"]}>
-                <PaiementFacturation />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/profil/client" replace />}
           />
           <Route
             path="/profil/client/AnnuaireMecanicien"
@@ -119,11 +113,7 @@ function App() {
           />
           <Route
             path="/profil/client/factures"
-            element={
-              <ProtectedRoute allowedRoles={["client"]}>
-                <MesFactures />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/profil/client" replace />}
           />
 
           {/* PROFIL MECANICIEN */}

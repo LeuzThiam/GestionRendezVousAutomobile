@@ -1,9 +1,8 @@
 import React from 'react';
 import { Formik } from 'formik';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Form, Button, Container, Row, Col } from 'react-bootstrap';
-import { API_BASE_URL } from '../config/api';
+import { registerGarageOwnerRequest } from '../shared/api/authApi';
 
 function Inscription() {
   const navigate = useNavigate();
@@ -75,8 +74,7 @@ function Inscription() {
               }}
               onSubmit={(values, { setSubmitting, setStatus }) => {
                 setStatus(null);
-                axios
-                  .post(`${API_BASE_URL}/api/garages/register/`, {
+                registerGarageOwnerRequest({
                     garage_name: values.garage_name,
                     garage_slug: values.garage_slug,
                     phone: values.phone,

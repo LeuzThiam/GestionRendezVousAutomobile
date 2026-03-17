@@ -1,9 +1,8 @@
 // src/components/ListeRendezVousClient.js
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Card, Button, Modal, Form, Container, Row, Col, Alert } from 'react-bootstrap';
-import { API_BASE_URL } from '../config/api';
+import { fetchRendezVousRequest, updateRendezVousRequest } from '../shared/api/rendezVousApi';
 
 function ListeRendezVousClient() {
   const [rendezVousList, setRendezVousList] = useState([]);
@@ -19,12 +18,7 @@ function ListeRendezVousClient() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get(`${API_BASE_URL}/api/rendezvous/`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      setRendezVousList(res.data);
+      setRendezVousList(await fetchRendezVousRequest());
     } catch (err) {
       console.error('Erreur lors de la récupération de la liste (client) :', err);
       setError("Impossible de récupérer la liste de rendez-vous.");
@@ -42,15 +36,7 @@ function ListeRendezVousClient() {
     if (!window.confirm('Voulez-vous vraiment annuler ce rendez-vous ?')) return;
     try {
       setLoading(true);
-      await axios.patch(
-        `${API_BASE_URL}/api/rendezvous/${rdv.id}/`,
-        { status: 'cancelled' },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      await updateRendezVousRequest(rdv.id, { status: 'cancelled' });
       await fetchRendezVous();
     } catch (err) {
       console.error("Erreur lors de l'annulation du RDV :", err);
@@ -82,18 +68,10 @@ function ListeRendezVousClient() {
     const newDateTime = `${newDate}T${newHeure}:00`;
     try {
       setLoading(true);
-      await axios.patch(
-        `${API_BASE_URL}/api/rendezvous/${selectedRdv.id}/`,
-        {
-          date: newDateTime,
-          status: 'modification_requested',
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      await updateRendezVousRequest(selectedRdv.id, {
+        date: newDateTime,
+        status: 'modification_requested',
+      });
       await fetchRendezVous();
       setShowModal(false);
       setSelectedRdv(null);

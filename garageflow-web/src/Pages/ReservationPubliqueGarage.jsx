@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { API_BASE_URL } from '../config/api';
 import { fetchVehicles } from '../features/vehiculeSlice';
+import { fetchPublicGarageRequest } from '../shared/api/garageApi';
+import { createRendezVousRequest } from '../shared/api/rendezVousApi';
 
 function ReservationPubliqueGarage() {
   const { slug } = useParams();
@@ -32,9 +32,9 @@ function ReservationPubliqueGarage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/garages/public/${slug}/`);
+        const response = await fetchPublicGarageRequest(slug);
         if (mounted) {
-          setGarage(response.data);
+          setGarage(response);
         }
       } catch (err) {
         if (mounted) {
@@ -74,21 +74,12 @@ function ReservationPubliqueGarage() {
     setError(null);
 
     try {
-      await axios.post(
-        `${API_BASE_URL}/api/rendezvous/`,
-        {
-          vehicule: Number(formData.vehicule),
-          mecanicien: Number(formData.mecanicien),
-          date: `${formData.date}T${formData.heure}:00`,
-          description: formData.description,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      await createRendezVousRequest({
+        vehicule: Number(formData.vehicule),
+        mecanicien: Number(formData.mecanicien),
+        date: `${formData.date}T${formData.heure}:00`,
+        description: formData.description,
+      });
 
       setSuccess('Votre rendez-vous a ete envoye au garage.');
       setFormData({

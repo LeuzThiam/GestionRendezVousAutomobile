@@ -13,7 +13,12 @@ import {
 } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCar, faTrash, faPlus, faEdit } from '@fortawesome/free-solid-svg-icons';
-import { API_BASE_URL } from '../config/api';
+import {
+  createVehiculeRequest,
+  deleteVehiculeRequest,
+  fetchVehiculesRequest,
+  updateVehiculeRequest,
+} from '../shared/api/vehiculeApi';
 
 // 1. Import Redux
 import { useDispatch, useSelector } from 'react-redux';
@@ -49,16 +54,9 @@ function GestionVehicule() {
 
   // ------------- 1) Charger la liste depuis l’API au montage -------------
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    axios
-      .get(`${API_BASE_URL}/api/vehicules/`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      })
-      .then((res) => {
-        // Au lieu de setVehicles, on fait un dispatch vers Redux
-        dispatch(setVehicles(res.data));
+    fetchVehiculesRequest()
+      .then((data) => {
+        dispatch(setVehicles(data));
       })
       .catch((err) => {
         console.error(err);
@@ -116,16 +114,9 @@ function GestionVehicule() {
       vehicle_type: vehicleFromVin.vehicle_type
     };
 
-    const token = localStorage.getItem('token');
-    axios
-      .post(`${API_BASE_URL}/api/vehicules/`, newVehicle, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : ''
-        }
-      })
-      .then((res) => {
-        // Au lieu de setVehicles([...vehicles, res.data]):
-        dispatch(addVehicle(res.data));
+    createVehiculeRequest(newVehicle)
+      .then((data) => {
+        dispatch(addVehicle(data));
         setVehicleFromVin(null);
       })
       .catch((err) => {
@@ -143,21 +134,13 @@ function GestionVehicule() {
       return;
     }
 
-    const token = localStorage.getItem('token');
-
     if (editVehicle) {
       // On fait un PUT pour mettre à jour
       const updatedData = { ...editVehicle, ...manualVehicle };
 
-      axios
-        .put(`${API_BASE_URL}/api/vehicules/${editVehicle.id}/`, updatedData, {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : ''
-          }
-        })
-        .then((res) => {
-          // Au lieu de local setVehicles => dispatch(updateVehicle)
-          dispatch(updateVehicle(res.data));
+      updateVehiculeRequest(editVehicle.id, updatedData)
+        .then((data) => {
+          dispatch(updateVehicle(data));
 
           // Reset
           setEditVehicle(null);
@@ -177,14 +160,9 @@ function GestionVehicule() {
         vehicle_type: 'Non spécifié'
       };
 
-      axios
-        .post(`${API_BASE_URL}/api/vehicules/`, newVehicle, {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : ''
-          }
-        })
-        .then((res) => {
-          dispatch(addVehicle(res.data));
+      createVehiculeRequest(newVehicle)
+        .then((data) => {
+          dispatch(addVehicle(data));
           setManualVehicle({ marque: '', modele: '', annee: '' });
         })
         .catch((err) => {
@@ -196,15 +174,8 @@ function GestionVehicule() {
 
   // ------------- 5) Supprimer un véhicule -------------
   const handleDeleteVehicle = (vehId) => {
-    const token = localStorage.getItem('token');
-    axios
-      .delete(`${API_BASE_URL}/api/vehicules/${vehId}/`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : ''
-        }
-      })
+    deleteVehiculeRequest(vehId)
       .then(() => {
-        // Au lieu de setVehicles => dispatch(removeVehicle)
         dispatch(removeVehicle(vehId));
       })
       .catch((err) => {
