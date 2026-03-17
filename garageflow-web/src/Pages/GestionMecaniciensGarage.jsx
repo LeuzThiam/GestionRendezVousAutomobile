@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
-import { useDispatch, useSelector } from 'react-redux';
 import {
-  createMecanicien,
-  deleteMecanicien,
-  fetchMecaniciens,
-} from '../features/MecanicienSlice';
+  createMecanicienRequest,
+  deleteMecanicienRequest,
+  fetchGarageMecaniciensRequest,
+} from '../shared/api/mecanicienApi';
 
 function flattenError(error) {
   if (!error) {
@@ -21,8 +20,9 @@ function flattenError(error) {
 }
 
 function GestionMecaniciensGarage() {
-  const dispatch = useDispatch();
-  const { mecaniciens, loading, error } = useSelector((state) => state.mecaniciens);
+  const [mecaniciens, setMecaniciens] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     first_name: '',
@@ -33,9 +33,21 @@ function GestionMecaniciensGarage() {
   });
   const [localMessage, setLocalMessage] = useState(null);
 
+  const loadMecaniciens = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setMecaniciens(await fetchGarageMecaniciensRequest());
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    dispatch(fetchMecaniciens());
-  }, [dispatch]);
+    loadMecaniciens();
+  }, []);
 
   const errorMessage = useMemo(() => flattenError(error), [error]);
 
@@ -47,8 +59,11 @@ function GestionMecaniciensGarage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLocalMessage(null);
-    const result = await dispatch(createMecanicien(formData));
-    if (createMecanicien.fulfilled.match(result)) {
+    try {
+      setLoading(true);
+      setError(null);
+      const mecanicien = await createMecanicienRequest(formData);
+      setMecaniciens((current) => [mecanicien, ...current]);
       setFormData({
         username: '',
         first_name: '',
@@ -58,12 +73,25 @@ function GestionMecaniciensGarage() {
         password2: '',
       });
       setLocalMessage('Mecanicien ajoute au garage.');
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (mecanicienId) => {
     setLocalMessage(null);
-    await dispatch(deleteMecanicien(mecanicienId));
+    try {
+      setLoading(true);
+      setError(null);
+      await deleteMecanicienRequest(mecanicienId);
+      setMecaniciens((current) => current.filter((mecanicien) => mecanicien.id !== mecanicienId));
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchVehicles } from '../features/vehiculeSlice';
+import { useSelector } from 'react-redux';
 import { fetchPublicGarageRequest } from '../shared/api/garageApi';
 import { createRendezVousRequest } from '../shared/api/rendezVousApi';
+import { fetchVehiculesRequest } from '../shared/api/vehiculeApi';
 
 function ReservationPubliqueGarage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.user);
-  const { vehicles, loading: vehiclesLoading, error: vehiclesError } = useSelector((state) => state.vehicles);
+  const [vehicles, setVehicles] = useState([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [vehiclesError, setVehiclesError] = useState(null);
 
   const [garage, setGarage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,9 +56,21 @@ function ReservationPubliqueGarage() {
 
   useEffect(() => {
     if (isAuthenticated && user?.role === 'client') {
-      dispatch(fetchVehicles());
+      async function loadVehicles() {
+        try {
+          setVehiclesLoading(true);
+          setVehiclesError(null);
+          setVehicles(await fetchVehiculesRequest());
+        } catch {
+          setVehiclesError('Impossible de charger les vehicules.');
+        } finally {
+          setVehiclesLoading(false);
+        }
+      }
+
+      loadVehicles();
     }
-  }, [dispatch, isAuthenticated, user]);
+  }, [isAuthenticated, user]);
 
   const canBook = useMemo(() => {
     return isAuthenticated && user?.role === 'client' && garage && user.garage_id === garage.id;

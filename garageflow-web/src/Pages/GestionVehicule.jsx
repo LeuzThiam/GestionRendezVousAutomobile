@@ -20,22 +20,8 @@ import {
   updateVehiculeRequest,
 } from '../shared/api/vehiculeApi';
 
-// 1. Import Redux
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  setVehicles,
-  addVehicle,
-  removeVehicle,
-  updateVehicle,
-} from '../features/vehiculeSlice.js';
-
 function GestionVehicule() {
-  // On NE stocke plus la liste de véhicules en local state
-  // const [vehicles, setVehicles] = useState([]);   // => supprimé
-
-  // On utilise Redux
-  const dispatch = useDispatch();
-  const vehicles = useSelector((state) => state.vehicles.vehicles);
+  const [vehicles, setVehicles] = useState([]);
 
   // Saisie pour VIN
   const [vin, setVin] = useState('');
@@ -56,7 +42,7 @@ function GestionVehicule() {
   useEffect(() => {
     fetchVehiculesRequest()
       .then((data) => {
-        dispatch(setVehicles(data));
+        setVehicles(data);
       })
       .catch((err) => {
         console.error(err);
@@ -64,7 +50,7 @@ function GestionVehicule() {
           "Impossible de charger les véhicules depuis l’API (erreur d’auth ?)."
         );
       });
-  }, [dispatch]);
+  }, []);
 
   // ------------- 2) Rechercher un véhicule via VIN (API NHTSA) -------------
   const handleVinSubmit = () => {
@@ -116,7 +102,7 @@ function GestionVehicule() {
 
     createVehiculeRequest(newVehicle)
       .then((data) => {
-        dispatch(addVehicle(data));
+        setVehicles((current) => [...current, data]);
         setVehicleFromVin(null);
       })
       .catch((err) => {
@@ -140,7 +126,9 @@ function GestionVehicule() {
 
       updateVehiculeRequest(editVehicle.id, updatedData)
         .then((data) => {
-          dispatch(updateVehicle(data));
+          setVehicles((current) =>
+            current.map((vehicle) => (vehicle.id === data.id ? data : vehicle))
+          );
 
           // Reset
           setEditVehicle(null);
@@ -162,7 +150,7 @@ function GestionVehicule() {
 
       createVehiculeRequest(newVehicle)
         .then((data) => {
-          dispatch(addVehicle(data));
+          setVehicles((current) => [...current, data]);
           setManualVehicle({ marque: '', modele: '', annee: '' });
         })
         .catch((err) => {
@@ -176,7 +164,7 @@ function GestionVehicule() {
   const handleDeleteVehicle = (vehId) => {
     deleteVehiculeRequest(vehId)
       .then(() => {
-        dispatch(removeVehicle(vehId));
+        setVehicles((current) => current.filter((vehicle) => vehicle.id !== vehId));
       })
       .catch((err) => {
         console.error(err);

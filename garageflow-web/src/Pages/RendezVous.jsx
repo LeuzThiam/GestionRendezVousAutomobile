@@ -1,12 +1,10 @@
 // src/components/RendezVous.js
 
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { setLoading, setError, fetchMecaniciens } from '../features/MecanicienSlice';
-import { addRendezVous } from '../features/rendezVousSlice';        
-import { fetchVehicles } from '../features/vehiculeSlice'; 
 import { Form, Button, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { createRendezVousRequest } from '../shared/api/rendezVousApi';
+import { fetchMecaniciensRequest } from '../shared/api/mecanicienApi';
+import { fetchVehiculesRequest } from '../shared/api/vehiculeApi';
 
 function RendezVous() {
   const [date, setDate] = useState('');
@@ -15,20 +13,34 @@ function RendezVous() {
   const [selectedVehicle, setSelectedVehicle] = useState('');
   const [selectedMecanicien, setSelectedMecanicien] = useState('');
   const [success, setSuccess] = useState(null);
-
-  // Récupération depuis le slice mecaniciens
-  const { mecaniciens, loading, error } = useSelector((state) => state.mecaniciens);
-
-  // Récupération depuis le slice vehicles
-  const { vehicles, loading: vehiclesLoading, error: vehiclesError } = useSelector((state) => state.vehicles);
-
-  const dispatch = useDispatch();
+  const [mecaniciens, setMecaniciens] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [vehiclesError, setVehiclesError] = useState(null);
 
   // Charger les véhicules et les mécaniciens au montage
   useEffect(() => {
-    dispatch(fetchVehicles());
-    dispatch(fetchMecaniciens()); // On récupère la liste dynamique des mécanos
-  }, [dispatch]);
+    async function loadData() {
+      try {
+        setVehiclesLoading(true);
+        setVehiclesError(null);
+        const [vehiclesData, mecaniciensData] = await Promise.all([
+          fetchVehiculesRequest(),
+          fetchMecaniciensRequest(),
+        ]);
+        setVehicles(vehiclesData);
+        setMecaniciens(mecaniciensData);
+      } catch {
+        setVehiclesError("Impossible de charger les donnees de reservation.");
+      } finally {
+        setVehiclesLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,14 +48,14 @@ function RendezVous() {
 
     // Vérif champs requis
     if (!selectedVehicle || !date || !heure || !symptomes || !selectedMecanicien) {
-      dispatch(setError('Veuillez remplir tous les champs requis.'));
+      setError('Veuillez remplir tous les champs requis.');
       return;
     }
 
     // Vérifier que le véhicule existe
     const vehicle = vehicles.find((v) => v.id === parseInt(selectedVehicle, 10));
     if (!vehicle) {
-      dispatch(setError('Le véhicule sélectionné est introuvable.'));
+      setError('Le vehicule selectionne est introuvable.');
       return;
     }
 
@@ -57,26 +69,12 @@ function RendezVous() {
     };
 
     try {
-      dispatch(setLoading(true));
+      setLoading(true);
+      setError(null);
 
-      // POST => API
       const data = await createRendezVousRequest(newRendezVousData);
 
-      // Succès
       setSuccess('Votre rendez-vous a été enregistré avec succès.');
-
-      // Mettre à jour le slice local (optionnel) :
-      dispatch(
-        addRendezVous({
-          id: data.id,
-          date: data.date,
-          heure,
-          description: data.description,
-          mecanicienId: data.mecanicien,
-          vehicleId: data.vehicule,
-          status: 'en attente', // ou data.status si l’API renvoie déjà "pending"
-        })
-      );
 
       // Réinitialiser le formulaire
       setDate('');
@@ -87,12 +85,12 @@ function RendezVous() {
     } catch (err) {
       console.error('Erreur lors de la création du rendez-vous :', err);
       if (err.response && err.response.data) {
-        dispatch(setError(`Impossible d'enregistrer le rendez-vous : ${JSON.stringify(err.response.data)}`));
+        setError(`Impossible d'enregistrer le rendez-vous : ${JSON.stringify(err.response.data)}`);
       } else {
-        dispatch(setError('Impossible d\'enregistrer le rendez-vous.'));
+        setError("Impossible d'enregistrer le rendez-vous.");
       }
     } finally {
-      dispatch(setLoading(false));
+      setLoading(false);
     }
   };
 
@@ -140,8 +138,7 @@ function RendezVous() {
                 <option value="">Sélectionnez un mécanicien</option>
                 {mecaniciens.map((mec) => (
                   <option key={mec.id} value={mec.id}>
-                    {/* Affichez ce que vous voulez, ex: nom/prenom */}
-                    {mec.first_name} {mec.last_name} - {mec.specialite}
+                    {`${mec.first_name || ''} ${mec.last_name || ''}`.trim() || mec.username}
                   </option>
                 ))}
               </Form.Control>
