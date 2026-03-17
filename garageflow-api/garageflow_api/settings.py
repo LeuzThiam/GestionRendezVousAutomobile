@@ -71,7 +71,7 @@ SWAGGER_SETTINGS = {
     'LOGIN_URL' : '/admin/login/'
 }
 
-ROOT_URLCONF = 'GestionBackend.urls'
+ROOT_URLCONF = 'garageflow_api.urls'
 
 TEMPLATES = [
     {
@@ -90,7 +90,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'GestionBackend.wsgi.application'
+WSGI_APPLICATION = 'garageflow_api.wsgi.application'
 
 if os.getenv("MYSQL_DATABASE"):
     DATABASES = {

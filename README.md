@@ -2,8 +2,8 @@
 
 Projet de gestion de rendez-vous automobile compose de deux applications:
 
-- `GestionBackend/` : API Django REST
-- `TravailPratique01/gestion-reparation-automobile/` : frontend React avec Vite
+- `garageflow-api/` : API Django REST
+- `garageflow-web/` : frontend React avec Vite
 
 ## Structure
 
@@ -27,7 +27,7 @@ Projet de gestion de rendez-vous automobile compose de deux applications:
 
 ### Backend Django
 
-Depuis `GestionBackend/`:
+Depuis `garageflow-api/`:
 
 ```bash
 python -m venv env
@@ -41,7 +41,7 @@ Le backend utilise SQLite par defaut si `MYSQL_DATABASE` n'est pas defini.
 
 ### Frontend React
 
-Depuis `TravailPratique01/gestion-reparation-automobile/`:
+Depuis `garageflow-web/`:
 
 ```bash
 npm install
@@ -52,7 +52,7 @@ npm run dev
 
 ### Backend
 
-Copier `GestionBackend/.env.example` et definir au besoin:
+Copier `garageflow-api/.env.example` et definir au besoin:
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG`
@@ -66,7 +66,7 @@ Copier `GestionBackend/.env.example` et definir au besoin:
 
 ### Frontend
 
-Copier `TravailPratique01/gestion-reparation-automobile/.env.example` et definir:
+Copier `garageflow-web/.env.example` et definir:
 
 - `VITE_API_URL`
 

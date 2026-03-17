@@ -1,5 +1,5 @@
 """
-WSGI config for GestionBackend project.
+WSGI config for garageflow_api project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'GestionBackend.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'garageflow_api.settings')
 
 application = get_wsgi_application()

@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: TravailPratique01/gestion-reparation-automobile
+        working-directory: garageflow-web
 
     steps:
       - name: Recuperer le depot
@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: TravailPratique01/gestion-reparation-automobile/package-lock.json
+          cache-dependency-path: garageflow-web/package-lock.json
 
       - name: Installer les dependances frontend
         run: npm ci
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: GestionBackend
+        working-directory: garageflow-api
 
     steps:
       - name: Recuperer le depot
@@ -53,7 +53,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: GestionBackend/requirements-ci.txt
+          cache-dependency-path: garageflow-api/requirements-ci.txt
 
       - name: Installer les dependances backend
         run: pip install -r requirements-ci.txt
