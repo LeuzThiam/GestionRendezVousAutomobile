@@ -4,7 +4,7 @@ import {
   createMecanicienRequest,
   deleteMecanicienRequest,
   fetchGarageMecaniciensRequest,
-} from '../shared/api/mecanicienApi';
+} from '../api/mecaniciens';
 
 function flattenError(error) {
   if (!error) {

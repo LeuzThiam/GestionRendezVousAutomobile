@@ -2,7 +2,7 @@ import React from 'react';
 import { Formik } from 'formik';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Form, Button, Container, Row, Col } from 'react-bootstrap';
-import { registerGarageOwnerRequest } from '../shared/api/authApi';
+import { registerGarageOwnerRequest } from '../api/auth';
 
 function Inscription() {
   const navigate = useNavigate();

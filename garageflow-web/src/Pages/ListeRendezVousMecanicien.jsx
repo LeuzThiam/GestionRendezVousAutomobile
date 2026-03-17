@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Modal, Form, Container, Row, Col, Alert } from 'react-bootstrap';
-import { fetchRendezVousRequest, updateRendezVousRequest } from '../shared/api/rendezVousApi';
+import { fetchRendezVousRequest, updateRendezVousRequest } from '../api/rendezVous';
 
 function ListeRendezVousMecanicien() {
   const [rendezVousList, setRendezVousList] = useState([]);

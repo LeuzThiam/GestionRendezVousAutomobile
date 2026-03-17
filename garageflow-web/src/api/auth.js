@@ -1,4 +1,4 @@
-import { apiClient } from './http';
+import { apiClient } from './client';
 
 export async function loginRequest(payload) {
   const response = await apiClient.post('/api/users/token/', payload);

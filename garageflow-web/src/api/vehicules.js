@@ -1,4 +1,4 @@
-import { apiClient } from './http';
+import { apiClient } from './client';
 
 export async function fetchVehiculesRequest() {
   const response = await apiClient.get('/api/vehicules/');

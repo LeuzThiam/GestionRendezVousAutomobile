@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import { createRendezVousRequest } from '../shared/api/rendezVousApi';
-import { fetchMecaniciensRequest } from '../shared/api/mecanicienApi';
-import { fetchVehiculesRequest } from '../shared/api/vehiculeApi';
+import { createRendezVousRequest } from '../api/rendezVous';
+import { fetchMecaniciensRequest } from '../api/mecaniciens';
+import { fetchVehiculesRequest } from '../api/vehicules';
 
 function RendezVous() {
   const [date, setDate] = useState('');

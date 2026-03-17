@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Card, Container, Row, Col } from 'react-bootstrap';
-import { fetchMecaniciensRequest } from '../shared/api/mecanicienApi';
+import { fetchMecaniciensRequest } from '../api/mecaniciens';
 
 function AnnuaireMecaniciens() {
   const [mecaniciens, setMecaniciens] = useState([]);

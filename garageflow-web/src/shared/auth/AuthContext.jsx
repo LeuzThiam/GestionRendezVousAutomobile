@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { fetchCurrentGarageRequest } from '../api/garageApi';
-import { fetchUserProfileRequest, updateUserProfileRequest } from '../api/userApi';
+import { fetchCurrentGarageRequest } from '../../api/garages';
+import { fetchUserProfileRequest, updateUserProfileRequest } from '../../api/users';
 
 const AuthContext = createContext(null);
 

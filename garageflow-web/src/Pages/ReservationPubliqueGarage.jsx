@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { fetchPublicGarageRequest } from '../shared/api/garageApi';
-import { createRendezVousRequest } from '../shared/api/rendezVousApi';
-import { fetchVehiculesRequest } from '../shared/api/vehiculeApi';
+import { fetchPublicGarageRequest } from '../api/garages';
+import { createRendezVousRequest } from '../api/rendezVous';
+import { fetchVehiculesRequest } from '../api/vehicules';
 import { useAuth } from '../shared/auth/AuthContext';
 
 function ReservationPubliqueGarage() {

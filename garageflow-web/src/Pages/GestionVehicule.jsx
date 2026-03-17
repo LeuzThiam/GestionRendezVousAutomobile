@@ -18,7 +18,7 @@ import {
   deleteVehiculeRequest,
   fetchVehiculesRequest,
   updateVehiculeRequest,
-} from '../shared/api/vehiculeApi';
+} from '../api/vehicules';
 
 function GestionVehicule() {
   const [vehicles, setVehicles] = useState([]);

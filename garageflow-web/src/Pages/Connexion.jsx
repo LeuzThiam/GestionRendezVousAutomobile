@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Formik } from 'formik';
 import { useNavigate } from 'react-router-dom';
 import { Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
-import { loginRequest } from '../shared/api/authApi';
+import { loginRequest } from '../api/auth';
 import { useAuth } from '../shared/auth/AuthContext';
 
 function Connexion() {
