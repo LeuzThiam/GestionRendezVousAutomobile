@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Form, Button, Container, Alert } from 'react-bootstrap';
+import { API_BASE_URL } from '../config/api';
 
 function PaiementFacturation() {
   // États liés au paiement
@@ -28,7 +29,7 @@ function PaiementFacturation() {
   // useEffect pour récupérer la liste des RendezVous depuis l'API
   useEffect(() => {
     axios
-      .get('http://127.0.0.1:8000/api/rendezvous/', {
+      .get(`${API_BASE_URL}/api/rendezvous/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`, // si JWT
         },
@@ -88,7 +89,7 @@ function PaiementFacturation() {
     try {
       // Envoyer la requête POST /api/factures/ pour créer la facture en base
       const response = await axios.post(
-        'http://127.0.0.1:8000/api/factures/',
+        `${API_BASE_URL}/api/factures/`,
         factureData,
         {
           headers: {

@@ -4,9 +4,9 @@ import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 
 function ProtectedRoute({ children, allowedRoles }) {
-  const { user } = useSelector((state) => state.user);
+  const { user, isAuthenticated } = useSelector((state) => state.user);
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!isAuthenticated || !user || !allowedRoles.includes(user.role)) {
     return <Navigate to="/connexion" replace />;
   }
 

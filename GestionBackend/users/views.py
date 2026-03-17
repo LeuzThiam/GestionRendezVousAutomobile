@@ -58,7 +58,7 @@ class UserProfileUpdateView(APIView):
         if serializer.is_valid():
             serializer.save()
             profile_serializer = ProfileSerializer(user.profile)
-            return Response({"success": True, "data": profile_serializer.data})
+            return Response(profile_serializer.data)
         return Response(serializer.errors, status=400)
 
 

@@ -13,6 +13,7 @@ import {
 } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCar, faTrash, faPlus, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { API_BASE_URL } from '../config/api';
 
 // 1. Import Redux
 import { useDispatch, useSelector } from 'react-redux';
@@ -50,7 +51,7 @@ function GestionVehicule() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     axios
-      .get('http://127.0.0.1:8000/api/vehicules/', {
+      .get(`${API_BASE_URL}/api/vehicules/`, {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
         },
@@ -117,7 +118,7 @@ function GestionVehicule() {
 
     const token = localStorage.getItem('token');
     axios
-      .post('http://127.0.0.1:8000/api/vehicules/', newVehicle, {
+      .post(`${API_BASE_URL}/api/vehicules/`, newVehicle, {
         headers: {
           Authorization: token ? `Bearer ${token}` : ''
         }
@@ -149,7 +150,7 @@ function GestionVehicule() {
       const updatedData = { ...editVehicle, ...manualVehicle };
 
       axios
-        .put(`http://127.0.0.1:8000/api/vehicules/${editVehicle.id}/`, updatedData, {
+        .put(`${API_BASE_URL}/api/vehicules/${editVehicle.id}/`, updatedData, {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }
@@ -177,7 +178,7 @@ function GestionVehicule() {
       };
 
       axios
-        .post('http://127.0.0.1:8000/api/vehicules/', newVehicle, {
+        .post(`${API_BASE_URL}/api/vehicules/`, newVehicle, {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }
@@ -197,7 +198,7 @@ function GestionVehicule() {
   const handleDeleteVehicle = (vehId) => {
     const token = localStorage.getItem('token');
     axios
-      .delete(`http://127.0.0.1:8000/api/vehicules/${vehId}/`, {
+      .delete(`${API_BASE_URL}/api/vehicules/${vehId}/`, {
         headers: {
           Authorization: token ? `Bearer ${token}` : ''
         }

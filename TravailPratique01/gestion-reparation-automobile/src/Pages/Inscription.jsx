@@ -3,6 +3,7 @@ import { Formik } from 'formik';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Form, Button, Container, Row, Col } from 'react-bootstrap';
+import { API_BASE_URL } from '../config/api';
 
 function Inscription() {
   const navigate = useNavigate();
@@ -77,7 +78,7 @@ function Inscription() {
                 console.log("Soumission du formulaire d'inscription:", values);
 
                 axios
-                  .post('http://127.0.0.1:8000/api/users/register/', {
+                  .post(`${API_BASE_URL}/api/users/register/`, {
                     username: values.username,
                     first_name: values.first_name,
                     last_name: values.last_name,
