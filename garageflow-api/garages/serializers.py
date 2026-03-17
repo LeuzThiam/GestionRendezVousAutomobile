@@ -5,6 +5,12 @@ from django.utils.text import slugify
 from .models import Garage
 
 
+class PublicMecanicienSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+
+
 class GarageSerializer(serializers.ModelSerializer):
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
     owner_username = serializers.CharField(source='owner.username', read_only=True)
@@ -23,6 +29,22 @@ class GarageSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['id', 'slug', 'is_active', 'owner_id', 'owner_username', 'created_at']
+
+
+class PublicGarageSerializer(serializers.ModelSerializer):
+    mecaniciens = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Garage
+        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens']
+
+    def get_mecaniciens(self, obj):
+        mecaniciens = User.objects.filter(profile__role='mecanicien', profile__garage=obj).values(
+            'id',
+            'first_name',
+            'last_name',
+        )
+        return PublicMecanicienSerializer(mecaniciens, many=True).data
 
 
 class GarageRegistrationSerializer(serializers.Serializer):

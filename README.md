@@ -21,6 +21,7 @@ Projet de gestion de rendez-vous automobile compose de deux applications:
 - connexion et inscription
 - creation d'un garage et du compte proprietaire
 - tableau de bord proprietaire minimal
+- page publique de reservation par garage
 - profils client et mecanicien
 - gestion des vehicules
 - prise et suivi des rendez-vous
@@ -113,3 +114,4 @@ Le backend prepare maintenant une base multi-garage:
 - les mecaniciens sont listes par garage
 - les vehicules et rendez-vous sont rattaches a un garage
 - le frontend expose un ecran `/garage/dashboard` pour le proprietaire
+- une page publique `/garage/:slug/reservation` permet de consulter un garage et de reserver si le client appartient au meme garage

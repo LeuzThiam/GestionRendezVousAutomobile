@@ -24,6 +24,7 @@ import Inscription from "./Pages/Inscription.jsx";
 import Connexion from "./Pages/Connexion.jsx";
 import DashboardGarage from "./Pages/DashboardGarage.jsx";
 import GestionMecaniciensGarage from "./Pages/GestionMecaniciensGarage.jsx";
+import ReservationPubliqueGarage from "./Pages/ReservationPubliqueGarage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 // Styles
@@ -46,6 +47,7 @@ function App() {
 
           {/* 3) Page d’inscription */}
           <Route path="/inscription" element={<Inscription />} />
+          <Route path="/garage/:slug/reservation" element={<ReservationPubliqueGarage />} />
           <Route
             path="/garage/dashboard"
             element={

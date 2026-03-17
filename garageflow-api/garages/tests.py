@@ -49,3 +49,32 @@ class GarageApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['id'], garage.id)
         self.assertEqual(response.data['name'], 'Garage Laval')
+
+    def test_public_garage_detail_returns_public_information(self):
+        owner = User.objects.create_user(
+            username='owner3',
+            email='owner3@example.com',
+            password='testpass123',
+        )
+        garage = Garage.objects.create(name='Garage Public', slug='garage-public', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(
+            username='meca-public',
+            email='meca-public@example.com',
+            password='testpass123',
+            first_name='Jean',
+            last_name='Garage',
+        )
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        response = self.client.get('/api/garages/public/garage-public/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Garage Public')
+        self.assertEqual(len(response.data['mecaniciens']), 1)
+        self.assertEqual(response.data['mecaniciens'][0]['first_name'], 'Jean')

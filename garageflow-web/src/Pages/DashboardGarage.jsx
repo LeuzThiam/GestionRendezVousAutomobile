@@ -52,6 +52,14 @@ function DashboardGarage() {
               <Card.Text className="mb-0">
                 <strong>Adresse :</strong> {currentGarage?.address || 'A renseigner'}
               </Card.Text>
+              {currentGarage?.slug && (
+                <Card.Text className="mt-3 mb-0">
+                  <strong>Lien public :</strong>{' '}
+                  <Link to={`/garage/${currentGarage.slug}/reservation`}>
+                    {`/garage/${currentGarage.slug}/reservation`}
+                  </Link>
+                </Card.Text>
+              )}
             </Card.Body>
           </Card>
         </Col>
