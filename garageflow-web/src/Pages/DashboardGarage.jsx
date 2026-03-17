@@ -1,18 +1,16 @@
 import React, { useEffect } from 'react';
 import { Alert, Card, Col, Container, Row, Spinner } from 'react-bootstrap';
-import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { fetchCurrentGarage } from '../features/userSlice';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function DashboardGarage() {
-  const dispatch = useDispatch();
-  const { currentGarage, loading, error, user } = useSelector((state) => state.user);
+  const { currentGarage, loading, error, user, refreshCurrentGarage } = useAuth();
 
   useEffect(() => {
     if (!currentGarage) {
-      dispatch(fetchCurrentGarage());
+      refreshCurrentGarage().catch(() => {});
     }
-  }, [currentGarage, dispatch]);
+  }, [currentGarage, refreshCurrentGarage]);
 
   return (
     <Container className="py-5">

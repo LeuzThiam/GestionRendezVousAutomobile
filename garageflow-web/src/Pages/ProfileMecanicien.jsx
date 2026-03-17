@@ -1,27 +1,21 @@
 // src/Pages/ProfileMecanicien.jsx
 
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-// On n'utilise plus la simple "updateUser" locale, mais bien les thunks asynchrones :
-import { fetchUser, updateUserAsync } from '../features/userSlice';
-
 import { Card, Button, Form, Container, Row, Col, Nav } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faUserEdit,
   faSave,
-  faFileInvoiceDollar,
   faTools,
   faEdit,
 } from '@fortawesome/free-solid-svg-icons';
 
-import BilanMecanicien from './BilanMecanicien';
 import ListeRendezVousMecanicien from './ListeRendezVousMecanicien';
 import './style.css';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function ProfileMecanicien() {
-  const dispatch = useDispatch();
-  const { user: currentUser, loading, error } = useSelector((state) => state.user);
+  const { user: currentUser, loading, error, refreshUser, updateUser } = useAuth();
 
   // Contrôle de la section affichée
   const [selectedComponent, setSelectedComponent] = useState('edit');
@@ -38,8 +32,8 @@ function ProfileMecanicien() {
 
   // 1) Charger le mécano (user) via l’API au montage
   useEffect(() => {
-    dispatch(fetchUser()); // => GET /api/<whatever>/profile
-  }, [dispatch]);
+    refreshUser().catch(() => {});
+  }, [refreshUser]);
 
   // 2) Mettre à jour le formData quand currentUser change
   useEffect(() => {
@@ -61,9 +55,12 @@ function ProfileMecanicien() {
   // Soumission => PATCH sur l'API via updateUserAsync
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(updateUserAsync(formData)).then(() => {
-      setIsEditing(false);
-    });
+    updateUser(formData)
+      .then(() => {
+        setIsEditing(false);
+        return refreshUser();
+      })
+      .catch(() => {});
   };
 
   // Sélection de la section
@@ -92,16 +89,6 @@ function ProfileMecanicien() {
                 >
                   <FontAwesomeIcon icon={faUserEdit} className="me-2 text-primary" />
                   Modifier mes informations
-                </Nav.Link>
-                <Nav.Link
-                  onClick={() => handleComponentSelect('bilan-mecanicien')}
-                  className={`d-flex align-items-center py-2 custom-nav-link ${
-                    selectedComponent === 'bilan-mecanicien' ? 'active' : ''
-                  }`}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <FontAwesomeIcon icon={faFileInvoiceDollar} className="me-2 text-success" />
-                  Bilan Mécanicien
                 </Nav.Link>
                 <Nav.Link
                   onClick={() => handleComponentSelect('rendez-vous-mecanicien')}
@@ -209,7 +196,6 @@ function ProfileMecanicien() {
             </Card>
           )}
 
-          {selectedComponent === 'bilan-mecanicien' && <BilanMecanicien />}
           {selectedComponent === 'rendez-vous-mecanicien' && <ListeRendezVousMecanicien />}
         </Col>
       </Row>

@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { fetchPublicGarageRequest } from '../shared/api/garageApi';
 import { createRendezVousRequest } from '../shared/api/rendezVousApi';
 import { fetchVehiculesRequest } from '../shared/api/vehiculeApi';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function ReservationPubliqueGarage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useSelector((state) => state.user);
+  const { user, isAuthenticated } = useAuth();
   const [vehicles, setVehicles] = useState([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [vehiclesError, setVehiclesError] = useState(null);

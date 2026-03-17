@@ -3,14 +3,11 @@
 import React, { useEffect } from 'react';
 import { Button, Container, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function Acceuil() {
   const navigate = useNavigate();
-
-  // On suppose que `user` (ou null) est stocké dans le state Redux
-  // et que `user.role` vaut "client" ou "mecanicien".
-  const { user } = useSelector((state) => state.user);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Si user existe => on redirige selon son rôle

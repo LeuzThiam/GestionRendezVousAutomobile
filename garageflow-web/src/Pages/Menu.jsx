@@ -2,9 +2,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
-import { logout } from '../features/userSlice';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSignOutAlt,
@@ -12,20 +10,14 @@ import {
   faSignInAlt,
   faUserPlus,
 } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function Menu() {
-  const user = useSelector((state) => state.user.user);
-  const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
-  const dispatch = useDispatch();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // Supprimez les infos du localStorage (si vous les stockez)
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    // Dispatch l'action de déconnexion
-    dispatch(logout());
-    // Redirige vers la page d'accueil/connexion (Acceuil) en mode 'login'
+    logout();
     navigate('/acceuil?mode=login');
   };
 

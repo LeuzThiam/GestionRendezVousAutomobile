@@ -2,15 +2,14 @@
 import React, { useState } from 'react';
 import { Formik } from 'formik';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { login } from '../features/userSlice';
 import { Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
 import { loginRequest } from '../shared/api/authApi';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function Connexion() {
   const [errorMessage, setErrorMessage] = useState(null);
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const { login } = useAuth();
 
   return (
     <Container
@@ -75,14 +74,6 @@ function Connexion() {
                       throw new Error("Le serveur n'a pas renvoyé de token d'accès ('access').");
                     }
 
-                    // Stocker le token
-                    localStorage.setItem('token', data.access);
-
-                    // Optionnel : stocker le refresh si fourni
-                    if (data.refresh) {
-                      localStorage.setItem('refresh', data.refresh);
-                    }
-
                     // Vérifier le rôle
                     if (!data.role) {
                       throw new Error("Le serveur n'a pas renvoyé de rôle. Vérifiez votre API.");
@@ -90,8 +81,7 @@ function Connexion() {
 
                     // Créer un objet user, le stocker dans Redux
                     const user = { ...data, role: data.role };
-                    localStorage.setItem('user', JSON.stringify(user));
-                    dispatch(login(user));
+                    login(user, { access: data.access, refresh: data.refresh });
 
                     // Redirection selon le rôle
                     if (data.role === 'owner') {

@@ -1,8 +1,6 @@
 // src/Pages/ProfileClient.jsx
 
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchUser, updateUserAsync } from '../features/userSlice';
 import { Card, Button, Form, Container, Row, Col, Nav } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -18,11 +16,10 @@ import MesRendezVous from './RendezVous';
 import RendezVousClient from './ListeRendezVousClient';
 
 import './style.css';
+import { useAuth } from '../shared/auth/AuthContext';
 
 function ProfileClient() {
-  const dispatch = useDispatch();
-
-  const { user: currentUser, loading, error } = useSelector((state) => state.user);
+  const { user: currentUser, loading, error, refreshUser, updateUser } = useAuth();
 
   const [selectedComponent, setSelectedComponent] = useState('edit');
   const [isEditing, setIsEditing] = useState(false);
@@ -37,8 +34,8 @@ function ProfileClient() {
 
   // Au montage, on récupère le user (GET /api/users/profile/)
   useEffect(() => {
-    dispatch(fetchUser());
-  }, [dispatch]);
+    refreshUser().catch(() => {});
+  }, [refreshUser]);
 
   // Dès que currentUser est mis à jour, on copie ses champs dans formData
   useEffect(() => {
@@ -60,15 +57,12 @@ function ProfileClient() {
   // Soumission => PATCH /api/users/profile/update/
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(updateUserAsync(formData))
+    updateUser(formData)
       .then(() => {
         setIsEditing(false);
-        // OPTION 1 : Si votre backend renvoie déjà
-        // l'user complet mis à jour dans updateUserAsync.fulfilled,
-        // vous n'avez peut-être pas besoin de refetch.
-        // Mais vous POUVEZ recharger pour être sûr :
-        dispatch(fetchUser());
-      });
+        return refreshUser();
+      })
+      .catch(() => {});
   };
 
   const handleComponentSelect = (component) => {
