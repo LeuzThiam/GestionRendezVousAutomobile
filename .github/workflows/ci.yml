@@ -61,11 +61,11 @@ jobs:
       - name: Verifier les migrations Django
         run: python manage.py migrate --noinput
         env:
-          DJANGO_SECRET_KEY: ci-secret-key
+          DJANGO_SECRET_KEY: ci-secret-key-long-pour-github-actions-123456
           DJANGO_DEBUG: "False"
 
       - name: Lancer les tests Django
         run: python manage.py test
         env:
-          DJANGO_SECRET_KEY: ci-secret-key
+          DJANGO_SECRET_KEY: ci-secret-key-long-pour-github-actions-123456
           DJANGO_DEBUG: "False"

@@ -10,7 +10,7 @@ import facturesSlice from './features/facturesSlice';
 import vehicleSlice from './features/vehiculeSlice';
 
 // Importez aussi mecanicienSlice si nécessaire
-import mecanicienSlice from './features/mecanicienSlice';
+import mecanicienSlice from './features/MecanicienSlice';
 
 let userFromStorage = null;
 

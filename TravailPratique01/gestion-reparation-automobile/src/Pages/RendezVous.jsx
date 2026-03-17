@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { setLoading, setError, fetchMecaniciens } from '../features/mecanicienSlice'; 
+import { setLoading, setError, fetchMecaniciens } from '../features/MecanicienSlice';
 import { addRendezVous } from '../features/rendezVousSlice';        
 import { fetchVehicles } from '../features/vehiculeSlice'; 
 import { Form, Button, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
