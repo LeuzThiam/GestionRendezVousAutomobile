@@ -1,8 +1,10 @@
 # rendezVous/views.py
 
 from rest_framework import viewsets, permissions
+from rest_framework.exceptions import PermissionDenied
 from .models import RendezVous
 from .serializers import RendezVousSerializer
+
 
 class RendezVousViewSet(viewsets.ModelViewSet):
     queryset = RendezVous.objects.all()
@@ -38,7 +40,6 @@ class RendezVousViewSet(viewsets.ModelViewSet):
         Lors de la création d'un rendez-vous, on peut imposer le 'client' = user connecté
         (si on veut que seul un 'client' puisse créer un RDV pour lui-même).
         """
-        # Exemple simple :
-        #   - Le user actuel est le client
-        #   - Le champs 'mecanicien' peut être fourni dans la requête ou pas
+        if not hasattr(self.request.user, 'profile') or self.request.user.profile.role != 'client':
+            raise PermissionDenied("Seul un client peut creer un rendez-vous.")
         serializer.save(client=self.request.user)
