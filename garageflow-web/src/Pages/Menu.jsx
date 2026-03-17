@@ -65,9 +65,14 @@ function Menu() {
             {isAuthenticated && (
               <>
                 {user?.role === 'owner' && (
-                  <Nav.Link as={Link} to="/garage/dashboard" className="menu-link">
-                    Tableau de bord
-                  </Nav.Link>
+                  <>
+                    <Nav.Link as={Link} to="/garage/dashboard" className="menu-link">
+                      Tableau de bord
+                    </Nav.Link>
+                    <Nav.Link as={Link} to="/garage/mecaniciens" className="menu-link">
+                      Mecaniciens
+                    </Nav.Link>
+                  </>
                 )}
                 <Button variant="outline-light" className="ms-2" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} /> Déconnexion

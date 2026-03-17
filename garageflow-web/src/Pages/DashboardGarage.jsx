@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Alert, Card, Col, Container, Row, Spinner } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { fetchCurrentGarage } from '../features/userSlice';
 
 function DashboardGarage() {
@@ -79,6 +80,7 @@ function DashboardGarage() {
               <Card.Text>
                 Ajouter l'ecran de gestion des mecaniciens du garage.
               </Card.Text>
+              <Link to="/garage/mecaniciens">Ouvrir la gestion de l'equipe</Link>
             </Card.Body>
           </Card>
         </Col>

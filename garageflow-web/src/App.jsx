@@ -23,6 +23,7 @@ import Acceuil from "./Pages/Acceuil.jsx";
 import Inscription from "./Pages/Inscription.jsx";
 import Connexion from "./Pages/Connexion.jsx";
 import DashboardGarage from "./Pages/DashboardGarage.jsx";
+import GestionMecaniciensGarage from "./Pages/GestionMecaniciensGarage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 // Styles
@@ -50,6 +51,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["owner"]}>
                 <DashboardGarage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/garage/mecaniciens"
+            element={
+              <ProtectedRoute allowedRoles={["owner"]}>
+                <GestionMecaniciensGarage />
               </ProtectedRoute>
             }
           />

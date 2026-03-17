@@ -8,6 +8,8 @@ from .views import (
     UserProfileUpdateView,
     MyTokenObtainPairView,
     MecanicienListView,
+    MecanicienManagementView,
+    MecanicienDetailView,
     UserDetailView  # <-- NOUVEAU
 )
 
@@ -25,6 +27,8 @@ urlpatterns = [
 
     # Liste des mécaniciens
     path('mecaniciens/', MecanicienListView.as_view(), name='mecaniciens-list'),
+    path('owner/mecaniciens/', MecanicienManagementView.as_view(), name='owner-mecaniciens'),
+    path('owner/mecaniciens/<int:pk>/', MecanicienDetailView.as_view(), name='owner-mecanicien-detail'),
 
     # NOUVEAU : CRUD (RUD) sur un user par son ID
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),

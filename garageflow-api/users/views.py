@@ -6,13 +6,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.exceptions import PermissionDenied
 
 from .serializers import (
     UserRegistrationSerializer,
     ProfileSerializer,
     UserUpdateSerializer,
     MyTokenObtainPairSerializer,
-    UserListSerializer
+    UserListSerializer,
+    MecanicienCreateSerializer,
 )
 from .models import Profile
 
@@ -84,6 +86,48 @@ class MecanicienListView(generics.ListAPIView):
         if garage is not None:
             queryset = queryset.filter(profile__garage=garage)
         return queryset
+
+
+class MecanicienManagementView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return MecanicienCreateSerializer
+        return UserListSerializer
+
+    def get_queryset(self):
+        garage = getattr(self.request.user.profile, 'garage', None)
+        queryset = User.objects.filter(profile__role='mecanicien')
+        if garage is not None:
+            queryset = queryset.filter(profile__garage=garage)
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        profile = getattr(request.user, 'profile', None)
+        if getattr(profile, 'role', None) != 'owner' or profile.garage is None:
+            raise PermissionDenied("Seul le proprietaire du garage peut creer un mecanicien.")
+
+        serializer = self.get_serializer(data=request.data, context={'garage': profile.garage})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserListSerializer(user).data, status=201)
+
+
+class MecanicienDetailView(generics.DestroyAPIView):
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        profile = getattr(self.request.user, 'profile', None)
+        garage = getattr(profile, 'garage', None)
+        return User.objects.filter(profile__role='mecanicien', profile__garage=garage)
+
+    def destroy(self, request, *args, **kwargs):
+        profile = getattr(request.user, 'profile', None)
+        if getattr(profile, 'role', None) != 'owner' or profile.garage is None:
+            raise PermissionDenied("Seul le proprietaire du garage peut supprimer un mecanicien.")
+        return super().destroy(request, *args, **kwargs)
 
 
 # == NOUVEAU : Lire/Mettre à jour/Supprimer un utilisateur par son ID ==

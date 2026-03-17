@@ -21,6 +21,45 @@ export const fetchMecaniciens = createAsyncThunk(
   }
 );
 
+export const createMecanicien = createAsyncThunk(
+  'mecaniciens/createMecanicien',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_BASE_URL}/api/users/owner/mecaniciens/`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || 'Erreur lors de la creation du mecanicien');
+    }
+  }
+);
+
+export const deleteMecanicien = createAsyncThunk(
+  'mecaniciens/deleteMecanicien',
+  async (mecanicienId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/api/users/owner/mecaniciens/${mecanicienId}/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return mecanicienId;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || 'Erreur lors de la suppression du mecanicien');
+    }
+  }
+);
+
 const mecanicienSlice = createSlice({
   name: 'mecaniciens',
   initialState: {
@@ -50,6 +89,32 @@ const mecanicienSlice = createSlice({
       .addCase(fetchMecaniciens.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Impossible de récupérer la liste des mécaniciens.";
+      })
+      .addCase(createMecanicien.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createMecanicien.fulfilled, (state, action) => {
+        state.loading = false;
+        state.mecaniciens.unshift(action.payload);
+      })
+      .addCase(createMecanicien.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Impossible de creer le mecanicien.';
+      })
+      .addCase(deleteMecanicien.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteMecanicien.fulfilled, (state, action) => {
+        state.loading = false;
+        state.mecaniciens = state.mecaniciens.filter(
+          (mecanicien) => mecanicien.id !== action.payload
+        );
+      })
+      .addCase(deleteMecanicien.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Impossible de supprimer le mecanicien.';
       });
   },
 });

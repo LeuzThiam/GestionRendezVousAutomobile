@@ -178,6 +178,40 @@ class UserListSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'garage_id']
 
 
+class MecanicienCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    password2 = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'password2']
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError("Les mots de passe ne correspondent pas.")
+        if User.objects.filter(username=attrs['username']).exists():
+            raise serializers.ValidationError({'username': "Ce nom d'utilisateur existe deja."})
+        if User.objects.filter(email=attrs['email']).exists():
+            raise serializers.ValidationError({'email': "Cette adresse courriel existe deja."})
+        return attrs
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        validated_data.pop('password2')
+
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+
+        garage = self.context['garage']
+        profile = user.profile
+        profile.role = 'mecanicien'
+        profile.garage = garage
+        profile.save()
+
+        return user
+
+
 # -- Optionnel: Un Serializer plus complet pour le CRUD d'un user --
 # class UserCRUDSerializer(serializers.ModelSerializer):
 #     ...
