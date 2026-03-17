@@ -4,6 +4,14 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
+const persistedUser = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('user')) || null;
+  } catch {
+    return null;
+  }
+})();
+
 // --- Thunk #1 : Récupérer l'utilisateur depuis l’API
 export const fetchUser = createAsyncThunk(
   'user/fetchUser',
@@ -18,6 +26,24 @@ export const fetchUser = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(
         err.response?.data || 'Impossible de récupérer les informations utilisateur.'
+      );
+    }
+  }
+);
+
+export const fetchCurrentGarage = createAsyncThunk(
+  'user/fetchCurrentGarage',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/garages/me/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data || 'Impossible de récupérer les informations du garage.'
       );
     }
   }
@@ -48,8 +74,9 @@ export const updateUserAsync = createAsyncThunk(
 );
 
 const initialState = {
-  user: null,
-  isAuthenticated: false,
+  user: persistedUser,
+  isAuthenticated: !!persistedUser,
+  currentGarage: null,
   paymentInfo: null,
   loading: false,
   error: null,
@@ -63,11 +90,13 @@ const userSlice = createSlice({
     login: (state, action) => {
       state.user = action.payload;
       state.isAuthenticated = true;
+      state.error = null;
     },
     // Logout local
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      state.currentGarage = null;
       localStorage.removeItem('token');
       localStorage.removeItem('refresh');
       localStorage.removeItem('user');
@@ -91,8 +120,8 @@ const userSlice = createSlice({
       .addCase(fetchUser.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload;
-        // On considère qu’on est connecté
         state.isAuthenticated = true;
+        localStorage.setItem('user', JSON.stringify(action.payload));
       })
       .addCase(fetchUser.rejected, (state, action) => {
         state.loading = false;
@@ -112,6 +141,19 @@ const userSlice = createSlice({
       })
       .addCase(updateUserAsync.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchCurrentGarage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCurrentGarage.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentGarage = action.payload;
+      })
+      .addCase(fetchCurrentGarage.rejected, (state, action) => {
+        state.loading = false;
+        state.currentGarage = null;
         state.error = action.payload;
       });
   },

@@ -2,7 +2,7 @@ import React from 'react';
 import { Formik } from 'formik';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Form, Button, Container, Row, Col } from 'react-bootstrap';
+import { Alert, Form, Button, Container, Row, Col } from 'react-bootstrap';
 import { API_BASE_URL } from '../config/api';
 
 function Inscription() {
@@ -20,34 +20,37 @@ function Inscription() {
 
             <Formik
               initialValues={{
+                garage_name: '',
+                garage_slug: '',
+                phone: '',
+                address: '',
                 username: '',
                 first_name: '',
                 last_name: '',
                 email: '',
                 password: '',
                 password2: '',
-                date_naissance: '',  // correspond à votre serializer
-                role: 'client',      // valeur par défaut si vous voulez
+                error: '',
               }}
               validate={(values) => {
                 const errors = {};
 
-                // 1) Username
+                if (!values.garage_name) {
+                  errors.garage_name = 'Requis';
+                }
+
                 if (!values.username) {
                   errors.username = 'Requis';
                 }
 
-                // 2) Prénom (first_name)
                 if (!values.first_name) {
                   errors.first_name = 'Requis';
                 }
 
-                // 3) Nom (last_name)
                 if (!values.last_name) {
                   errors.last_name = 'Requis';
                 }
 
-                // 4) Email
                 if (!values.email) {
                   errors.email = 'Requis';
                 } else if (
@@ -56,45 +59,48 @@ function Inscription() {
                   errors.email = 'Adresse email invalide';
                 }
 
-                // 5) Mot de passe
                 if (!values.password) {
                   errors.password = 'Requis';
                 }
 
-                // 6) Confirmation mot de passe
+                if (!values.password2) {
+                  errors.password2 = 'Requis';
+                }
+
                 if (values.password !== values.password2) {
                   errors.password2 = 'Les mots de passe ne correspondent pas.';
                 }
 
-                // 7) Date de naissance
-                if (!values.date_naissance) {
-                  errors.date_naissance = 'Requis';
-                }
-
                 return errors;
               }}
-              onSubmit={(values, { setSubmitting }) => {
-                // Pour débogage
-                console.log("Soumission du formulaire d'inscription:", values);
-
+              onSubmit={(values, { setSubmitting, setStatus }) => {
+                setStatus(null);
                 axios
-                  .post(`${API_BASE_URL}/api/users/register/`, {
+                  .post(`${API_BASE_URL}/api/garages/register/`, {
+                    garage_name: values.garage_name,
+                    garage_slug: values.garage_slug,
+                    phone: values.phone,
+                    address: values.address,
                     username: values.username,
                     first_name: values.first_name,
                     last_name: values.last_name,
                     email: values.email,
                     password: values.password,
                     password2: values.password2,
-                    date_naissance: values.date_naissance,
-                    role: values.role,
                   })
-                  .then((response) => {
-                    console.log('Inscription réussie:', response.data);
-                    // Après succès, rediriger l'utilisateur vers la page de connexion, par ex:
+                  .then(() => {
                     navigate('/connexion');
                   })
                   .catch((error) => {
-                    console.error("Erreur d'inscription:", error.response?.data || error);
+                    const payload = error.response?.data;
+                    if (typeof payload === 'string') {
+                      setStatus(payload);
+                    } else if (payload && typeof payload === 'object') {
+                      const firstError = Object.values(payload).flat().join(' ');
+                      setStatus(firstError || "Erreur d'inscription.");
+                    } else {
+                      setStatus("Erreur d'inscription.");
+                    }
                   })
                   .finally(() => {
                     setSubmitting(false);
@@ -109,8 +115,67 @@ function Inscription() {
                 values,
                 touched,
                 errors,
+                status,
               }) => (
                 <Form onSubmit={handleSubmit}>
+                  {status && (
+                    <Alert variant="danger" className="mb-3">
+                      {status}
+                    </Alert>
+                  )}
+
+                  <Form.Group controlId="formGarageName" className="mb-3">
+                    <Form.Label>Nom du garage</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="garage_name"
+                      placeholder="Garage Flow Montreal"
+                      value={values.garage_name}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      isInvalid={touched.garage_name && errors.garage_name}
+                    />
+                    <Form.Control.Feedback type="invalid">
+                      {errors.garage_name}
+                    </Form.Control.Feedback>
+                  </Form.Group>
+
+                  <Form.Group controlId="formGarageSlug" className="mb-3">
+                    <Form.Label>Slug public du garage</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="garage_slug"
+                      placeholder="garage-flow-montreal"
+                      value={values.garage_slug}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                  </Form.Group>
+
+                  <Form.Group controlId="formPhone" className="mb-3">
+                    <Form.Label>Téléphone</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="phone"
+                      placeholder="5140000000"
+                      value={values.phone}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                  </Form.Group>
+
+                  <Form.Group controlId="formAddress" className="mb-3">
+                    <Form.Label>Adresse</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="address"
+                      placeholder="123 Rue du Test, Montreal"
+                      value={values.address}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                  </Form.Group>
+
                   {/* CHAMP USERNAME */}
                   <Form.Group controlId="formUsername" className="mb-3">
                     <Form.Label>Nom d'utilisateur</Form.Label>
@@ -213,44 +278,13 @@ function Inscription() {
                     </Form.Control.Feedback>
                   </Form.Group>
 
-                  {/* CHAMP DATE NAISSANCE */}
-                  <Form.Group controlId="formDateNaissance" className="mb-3">
-                    <Form.Label>Date de naissance</Form.Label>
-                    <Form.Control
-                      type="date"
-                      name="date_naissance"
-                      value={values.date_naissance}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      isInvalid={touched.date_naissance && errors.date_naissance}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      {errors.date_naissance}
-                    </Form.Control.Feedback>
-                  </Form.Group>
-
-                  {/* CHAMP ROLE (client / mecanicien) */}
-                  <Form.Group controlId="formRole" className="mb-4">
-                    <Form.Label>Rôle</Form.Label>
-                    <Form.Control
-                      as="select"
-                      name="role"
-                      value={values.role}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    >
-                      <option value="client">Client</option>
-                      <option value="mecanicien">Mécanicien</option>
-                    </Form.Control>
-                  </Form.Group>
-
                   <Button
                     variant="primary"
                     type="submit"
                     disabled={isSubmitting}
                     className="w-100 py-2"
                   >
-                    S'inscrire
+                    Créer mon garage
                   </Button>
                 </Form>
               )}

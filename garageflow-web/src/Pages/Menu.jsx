@@ -14,7 +14,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 function Menu() {
-  // On suppose que vous gérez l'état de l'authentification dans Redux
+  const user = useSelector((state) => state.user.user);
   const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -64,6 +64,11 @@ function Menu() {
             {/* Si l'utilisateur est déjà connecté */}
             {isAuthenticated && (
               <>
+                {user?.role === 'owner' && (
+                  <Nav.Link as={Link} to="/garage/dashboard" className="menu-link">
+                    Tableau de bord
+                  </Nav.Link>
+                )}
                 <Button variant="outline-light" className="ms-2" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} /> Déconnexion
                 </Button>

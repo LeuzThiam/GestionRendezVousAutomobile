@@ -98,13 +98,19 @@ function Connexion() {
                     dispatch(login(user));
 
                     // Redirection selon le rôle
-                    if (data.role === 'client') {
-                      navigate('/profil/client'); // par défaut
-                    } else if (data.role === 'mecanicien') {
-                      navigate('/profil/mecanicien'); // par défaut
-                    } else {
-                      setErrorMessage("Rôle inconnu. Impossible de rediriger.");
+                    if (data.role === 'owner') {
+                      navigate('/garage/dashboard');
+                      return;
                     }
+                    if (data.role === 'client') {
+                      navigate('/profil/client');
+                      return;
+                    }
+                    if (data.role === 'mecanicien') {
+                      navigate('/profil/mecanicien');
+                      return;
+                    }
+                    setErrorMessage("Rôle inconnu. Impossible de rediriger.");
                   })
                   .catch((error) => {
                     // Échec de la connexion

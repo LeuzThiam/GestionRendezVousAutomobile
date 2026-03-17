@@ -22,6 +22,7 @@ import Menu from "./Pages/Menu.jsx";
 import Acceuil from "./Pages/Acceuil.jsx";
 import Inscription from "./Pages/Inscription.jsx";
 import Connexion from "./Pages/Connexion.jsx";
+import DashboardGarage from "./Pages/DashboardGarage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
 // Styles
@@ -44,6 +45,14 @@ function App() {
 
           {/* 3) Page d’inscription */}
           <Route path="/inscription" element={<Inscription />} />
+          <Route
+            path="/garage/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["owner"]}>
+                <DashboardGarage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* 4) Redirection de "/" vers "/acceuil" */}
           <Route path="/" element={<Navigate to="/acceuil" replace />} />

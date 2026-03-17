@@ -15,7 +15,9 @@ function Acceuil() {
   useEffect(() => {
     // Si user existe => on redirige selon son rôle
     if (user) {
-      if (user.role === 'client') {
+      if (user.role === 'owner') {
+        navigate('/garage/dashboard');
+      } else if (user.role === 'client') {
         navigate('/profil/client');
       } else if (user.role === 'mecanicien') {
         navigate('/profil/mecanicien');
@@ -37,7 +39,7 @@ function Acceuil() {
         <Col className="text-center">
           <h1 className="mb-4">Bienvenue sur la plateforme</h1>
           <p className="mb-5">
-            Veuillez vous connecter ou créer un compte
+            Creez votre garage, connectez votre equipe et gerez vos rendez-vous.
           </p>
 
           <div>
