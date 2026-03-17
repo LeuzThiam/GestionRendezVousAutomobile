@@ -34,6 +34,7 @@ git checkout -b feature/auth-config-hardening
 ### Commits
 
 Un commit doit porter une seule idee.
+Les messages de commit doivent toujours etre rediges en francais.
 
 Exemples adaptes au projet:
 
