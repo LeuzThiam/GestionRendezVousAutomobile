@@ -237,11 +237,48 @@ class AuthLoginSerializer(serializers.Serializer):
         }
 
 
-class AuthRegisterSerializer(GarageRegistrationSerializer):
+class AuthOwnerRegisterSerializer(GarageRegistrationSerializer):
     def validate(self, attrs):
         attrs = super().validate(attrs)
         validate_user_password(attrs['password'])
         return attrs
+
+
+class AuthClientRegisterSerializer(serializers.Serializer):
+    garage_slug = serializers.SlugField(max_length=160)
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True)
+    password2 = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError("Les mots de passe ne correspondent pas.")
+
+        validate_unique_user_fields(username=attrs.get('username'), email=attrs.get('email'))
+        validate_user_password(attrs['password'])
+
+        try:
+            attrs['garage'] = Garage.objects.get(slug=attrs['garage_slug'], is_active=True)
+        except Garage.DoesNotExist:
+            raise serializers.ValidationError({'garage_slug': "Aucun garage actif ne correspond a ce slug."})
+
+        return attrs
+
+    def create(self, validated_data):
+        garage = validated_data.pop('garage')
+        password = validated_data.pop('password')
+        validated_data.pop('password2')
+        validated_data.pop('garage_slug')
+
+        user = create_basic_user(password=password, **validated_data)
+        assign_profile(user, role='client', garage=garage)
+        return user
+
+    def to_representation(self, instance):
+        return AuthUserSerializer(instance).data
 
 
 # == (NOUVEAU) SERIALIZER DE LISTE USER / MECANICIENS ==

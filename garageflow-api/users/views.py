@@ -9,7 +9,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
     AuthLoginSerializer,
-    AuthRegisterSerializer,
+    AuthClientRegisterSerializer,
+    AuthOwnerRegisterSerializer,
     UserRegistrationSerializer,
     ProfileSerializer,
     UserUpdateSerializer,
@@ -24,7 +25,19 @@ from garages.models import Garage
 
 class AuthRegisterView(generics.CreateAPIView):
     queryset = Garage.objects.all()
-    serializer_class = AuthRegisterSerializer
+    serializer_class = AuthOwnerRegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class AuthOwnerRegisterView(generics.CreateAPIView):
+    queryset = Garage.objects.all()
+    serializer_class = AuthOwnerRegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class AuthClientRegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = AuthClientRegisterSerializer
     permission_classes = [permissions.AllowAny]
 
 

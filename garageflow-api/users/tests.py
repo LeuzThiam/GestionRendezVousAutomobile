@@ -7,6 +7,73 @@ from garages.models import Garage
 
 
 class UsersApiTests(APITestCase):
+    def test_auth_owner_register_creates_owner_and_garage(self):
+        response = self.client.post(
+            '/api/auth/register/owner/',
+            {
+                'garage_name': 'Garage Owner Test',
+                'garage_slug': 'garage-owner-test',
+                'phone': '5140000000',
+                'address': '123 rue Principale',
+                'username': 'owner-register',
+                'email': 'owner-register@example.com',
+                'first_name': 'Owner',
+                'last_name': 'Register',
+                'password': 'Testpass1234!',
+                'password2': 'Testpass1234!',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        owner = User.objects.get(username='owner-register')
+        self.assertEqual(owner.profile.role, 'owner')
+        self.assertEqual(owner.profile.garage.slug, 'garage-owner-test')
+
+    def test_auth_client_register_creates_client_in_existing_garage(self):
+        owner = User.objects.create_user(username='owner-register-client', password='testpass123')
+        garage = Garage.objects.create(name='Garage Client Test', slug='garage-client-test', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        response = self.client.post(
+            '/api/auth/register/client/',
+            {
+                'garage_slug': 'garage-client-test',
+                'username': 'client-register',
+                'email': 'client-register@example.com',
+                'first_name': 'Client',
+                'last_name': 'Register',
+                'password': 'Testpass1234!',
+                'password2': 'Testpass1234!',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        client = User.objects.get(username='client-register')
+        self.assertEqual(client.profile.role, 'client')
+        self.assertEqual(client.profile.garage, garage)
+
+    def test_auth_client_register_rejects_unknown_garage_slug(self):
+        response = self.client.post(
+            '/api/auth/register/client/',
+            {
+                'garage_slug': 'garage-inconnu',
+                'username': 'client-invalid',
+                'email': 'client-invalid@example.com',
+                'first_name': 'Client',
+                'last_name': 'Invalid',
+                'password': 'Testpass1234!',
+                'password2': 'Testpass1234!',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('garage_slug', response.data)
+
     def test_auth_login_returns_tokens_and_user_for_valid_credentials(self):
         user = User.objects.create_user(
             username='owner-auth',

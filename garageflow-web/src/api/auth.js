@@ -6,7 +6,12 @@ export async function loginRequest(payload) {
 }
 
 export async function registerGarageOwnerRequest(payload) {
-  const response = await apiClient.post('/api/auth/register/', payload);
+  const response = await apiClient.post('/api/auth/register/owner/', payload);
+  return response.data;
+}
+
+export async function registerClientRequest(payload) {
+  const response = await apiClient.post('/api/auth/register/client/', payload);
   return response.data;
 }
 
