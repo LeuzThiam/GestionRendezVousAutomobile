@@ -1,4 +1,4 @@
-# rendezVous/admin.py
+# rendez_vous/admin.py
 
 from django.contrib import admin
 from .models import RendezVous

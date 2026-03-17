@@ -1,4 +1,4 @@
-# rendezVous/models.py
+# rendez_vous/models.py
 
 from django.db import models
 from django.conf import settings

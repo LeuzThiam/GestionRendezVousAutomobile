@@ -1,4 +1,4 @@
-# rendezVous/views.py
+# rendez_vous/views.py
 
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied

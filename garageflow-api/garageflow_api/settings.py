@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'garages',
     'users',
     'vehicules',
-    'rendezVous',
+    'rendez_vous.apps.RendezVousConfig',
 ]
 
 CORS_ALLOWED_ORIGINS = get_list_env(

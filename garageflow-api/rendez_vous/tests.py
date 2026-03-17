@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from garages.models import Garage
-from rendezVous.models import RendezVous
+from rendez_vous.models import RendezVous
 from vehicules.models import Vehicule
 
 

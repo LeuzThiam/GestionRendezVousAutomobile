@@ -1,4 +1,4 @@
-# rendezVous/serializers.py
+# rendez_vous/serializers.py
 
 from rest_framework import serializers
 from django.utils import timezone
