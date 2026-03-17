@@ -31,16 +31,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',    # Pour Django REST Framework
-    'garages',
-    'users',             # App pour la gestion des utilisateurs
-    'vehicules',          # App pour la gestion des véhicules
-    'rendezVous',      # App pour la gestion des rendez-vous
-    'factures',          # App pour la gestion des factures
-    'stats',             # App pour la page de statistiques
+    'rest_framework',
     'corsheaders',
-    'drf_yasg',
-    
+    'garages',
+    'users',
+    'vehicules',
+    'rendezVous',
 ]
 
 CORS_ALLOWED_ORIGINS = get_list_env(
@@ -49,7 +45,7 @@ CORS_ALLOWED_ORIGINS = get_list_env(
 )
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # tout en haut
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -59,25 +55,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        'Basic': {'type' : 'basic'},
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header',
-            
-        }
-    },
-    'LOGIN_URL' : '/admin/login/'
-}
-
 ROOT_URLCONF = 'garageflow_api.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # Si vous avez des templates à un endroit spécifique, ajoutez le chemin dans DIRS
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -111,15 +93,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-
-
-
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Dossiers contenant des fichiers statiques locaux
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',  # Assurez-vous que ce chemin inclut `static/swagger-ui`
-]
 
 
 # Password validation
@@ -148,7 +122,6 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configuration de Django REST Framework et JWT
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',

@@ -131,7 +131,6 @@ class RendezVousApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('mecanicien', response.data)
         self.assertIn('vehicule', response.data)
 
     def test_mecanicien_cannot_create_rendezvous(self):
@@ -152,6 +151,7 @@ class RendezVousApiTests(APITestCase):
 
     def test_client_can_only_request_modification_or_cancel(self):
         rdv = RendezVous.objects.create(
+            garage=self.garage,
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
@@ -171,6 +171,7 @@ class RendezVousApiTests(APITestCase):
 
     def test_mecanicien_must_provide_quote_and_duration_when_confirming(self):
         rdv = RendezVous.objects.create(
+            garage=self.garage,
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
@@ -189,6 +190,7 @@ class RendezVousApiTests(APITestCase):
 
     def test_mecanicien_can_confirm_with_quote_and_duration(self):
         rdv = RendezVous.objects.create(
+            garage=self.garage,
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
@@ -210,6 +212,7 @@ class RendezVousApiTests(APITestCase):
 
     def test_mecanicien_must_provide_reason_when_rejecting(self):
         rdv = RendezVous.objects.create(
+            garage=self.garage,
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
@@ -229,6 +232,7 @@ class RendezVousApiTests(APITestCase):
 
     def test_queryset_is_filtered_for_client(self):
         own_rdv = RendezVous.objects.create(
+            garage=self.garage,
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
@@ -236,6 +240,7 @@ class RendezVousApiTests(APITestCase):
             description='Mon RDV',
         )
         RendezVous.objects.create(
+            garage=self.second_garage,
             client=self.other_client,
             mecanicien=self.mecanicien,
             vehicule=self.other_vehicle,

@@ -99,3 +99,6 @@ class GarageRegistrationSerializer(serializers.Serializer):
         profile.save()
 
         return garage
+
+    def to_representation(self, instance):
+        return GarageSerializer(instance).data

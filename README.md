@@ -14,7 +14,6 @@ Projet de gestion de rendez-vous automobile compose de deux applications:
 - gestion des utilisateurs
 - gestion des vehicules
 - gestion des rendez-vous
-- gestion des factures
 
 ### Frontend
 
