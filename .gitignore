@@ -1,10 +1,10 @@
-GestionBackend/env/
-GestionBackend/__pycache__/
-GestionBackend/*/__pycache__/
-GestionBackend/*/migrations/__pycache__/
-TravailPratique01/gestion-reparation-automobile/node_modules/
-TravailPratique01/gestion-reparation-automobile/dist/
-TravailPratique01/gestion-reparation-automobile/.cache/
+garageflow-api/env/
+garageflow-api/__pycache__/
+garageflow-api/*/__pycache__/
+garageflow-api/*/migrations/__pycache__/
+garageflow-web/node_modules/
+garageflow-web/dist/
+garageflow-web/.cache/
 *.pyc
 *.pyo
 *.sqlite3

@@ -2,8 +2,8 @@
 
 Ce depot contient deux zones de travail:
 
-- `GestionBackend/` pour l'API Django
-- `TravailPratique01/gestion-reparation-automobile/` pour le frontend React
+- `garageflow-api/` pour l'API Django
+- `garageflow-web/` pour le frontend React
 
 ## Branches
 
@@ -34,6 +34,7 @@ git checkout -b feature/auth-config-hardening
 ### Commits
 
 Un commit doit porter une seule idee.
+Les messages de commit doivent toujours etre rediges en francais.
 
 Exemples adaptes au projet:
 
@@ -53,7 +54,7 @@ Puis ouvrir une Pull Request vers `dev` ou `master` selon l'organisation choisie
 
 ### Backend Django
 
-Executer depuis `GestionBackend/`:
+Executer depuis `garageflow-api/`:
 
 ```bash
 python manage.py test
@@ -61,7 +62,7 @@ python manage.py test
 
 ### Frontend React
 
-Executer depuis `TravailPratique01/gestion-reparation-automobile/`:
+Executer depuis `garageflow-web/`:
 
 ```bash
 npm install
