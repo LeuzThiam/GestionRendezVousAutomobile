@@ -31,16 +31,9 @@ class UsersApiTests(APITestCase):
         self.assertEqual(owner.profile.garage.slug, 'garage-owner-test')
 
     def test_auth_client_register_creates_client_in_existing_garage(self):
-        owner = User.objects.create_user(username='owner-register-client', password='testpass123')
-        garage = Garage.objects.create(name='Garage Client Test', slug='garage-client-test', owner=owner)
-        owner.profile.role = 'owner'
-        owner.profile.garage = garage
-        owner.profile.save()
-
         response = self.client.post(
             '/api/auth/register/client/',
             {
-                'garage_slug': 'garage-client-test',
                 'username': 'client-register',
                 'email': 'client-register@example.com',
                 'first_name': 'Client',
@@ -54,15 +47,16 @@ class UsersApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         client = User.objects.get(username='client-register')
         self.assertEqual(client.profile.role, 'client')
-        self.assertEqual(client.profile.garage, garage)
+        self.assertIsNone(client.profile.garage)
 
-    def test_auth_client_register_rejects_unknown_garage_slug(self):
+    def test_auth_client_register_requires_unique_identity(self):
+        User.objects.create_user(username='existing-client', email='client-existing@example.com', password='testpass123')
+
         response = self.client.post(
             '/api/auth/register/client/',
             {
-                'garage_slug': 'garage-inconnu',
-                'username': 'client-invalid',
-                'email': 'client-invalid@example.com',
+                'username': 'existing-client',
+                'email': 'client-existing@example.com',
                 'first_name': 'Client',
                 'last_name': 'Invalid',
                 'password': 'Testpass1234!',
@@ -72,7 +66,7 @@ class UsersApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('garage_slug', response.data)
+        self.assertIn('username', response.data)
 
     def test_auth_login_returns_tokens_and_user_for_valid_credentials(self):
         user = User.objects.create_user(

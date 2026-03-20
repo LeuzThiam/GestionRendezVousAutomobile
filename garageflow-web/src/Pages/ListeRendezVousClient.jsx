@@ -90,12 +90,42 @@ function ListeRendezVousClient() {
   const cancelledRdv = rendezVousList.filter(
     (r) => r.status === 'cancelled' || r.status === 'refused' || r.status === 'rejected'
   );
+  const contactGarages = Array.from(
+    new Map(
+      rendezVousList
+        .filter((rdv) => rdv.garage && rdv.garage_name)
+        .map((rdv) => [rdv.garage, { id: rdv.garage, name: rdv.garage_name, slug: rdv.garage_slug }])
+    ).values()
+  );
 
   return (
     <Container className="mt-5">
       <h2 className="text-center mb-4">Mes Rendez-vous (Client)</h2>
       {error && <Alert variant="danger">{error}</Alert>}
       {loading && <Alert variant="info">Chargement en cours...</Alert>}
+
+      {contactGarages.length > 0 && (
+        <>
+          <h3 className="text-primary">Garages en contact</h3>
+          <Row className="mb-4">
+            {contactGarages.map((garage) => (
+              <Col xs={12} md={6} lg={4} key={garage.id}>
+                <Card className="mb-3 shadow-sm">
+                  <Card.Body>
+                    <Card.Title>{garage.name}</Card.Title>
+                    <p className="text-muted mb-3">{garage.slug || 'slug indisponible'}</p>
+                    {garage.slug && (
+                      <Button href={`/garage/${garage.slug}/reservation`} variant="outline-primary">
+                        Revoir ce garage
+                      </Button>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </>
+      )}
 
       {/* Rendez-vous en attente */}
       <h3 className="text-warning">Rendez-vous en attente</h3>
@@ -108,6 +138,7 @@ function ListeRendezVousClient() {
               </Card.Header>
               <Card.Body>
                 <p><strong>Status:</strong> {rdv.status}</p>
+                <p><strong>Garage:</strong> {rdv.garage_name || '-'}</p>
                 <p><strong>Description:</strong> {rdv.description || 'Aucune description'}</p>
                 <div className="d-flex justify-content-between">
                   <Button variant="danger" onClick={() => handleCancel(rdv)}>
@@ -134,6 +165,7 @@ function ListeRendezVousClient() {
               </Card.Header>
               <Card.Body>
                 <p><strong>Status:</strong> {rdv.status}</p>
+                <p><strong>Garage:</strong> {rdv.garage_name || '-'}</p>
                 <p><strong>Description:</strong> {rdv.description || 'Aucune description'}</p>
                 {/* Possibilité d'annuler quand même */}
                 <Button variant="danger" onClick={() => handleCancel(rdv)}>
@@ -156,6 +188,7 @@ function ListeRendezVousClient() {
               </Card.Header>
               <Card.Body>
                 <p><strong>Status:</strong> {rdv.status}</p>
+                <p><strong>Garage:</strong> {rdv.garage_name || '-'}</p>
                 <p><strong>Description:</strong> {rdv.description || 'Aucune description'}</p>
                 <p><strong>Durée estimée:</strong> {rdv.estimatedTime || '-'} h</p>
                 <p><strong>Devis:</strong> {rdv.quote || '-'} €</p>
@@ -185,6 +218,7 @@ function ListeRendezVousClient() {
               </Card.Header>
               <Card.Body>
                 <p><strong>Status:</strong> {rdv.status}</p>
+                <p><strong>Garage:</strong> {rdv.garage_name || '-'}</p>
                 <p><strong>Description:</strong> {rdv.description || 'Aucune description'}</p>
               </Card.Body>
             </Card>

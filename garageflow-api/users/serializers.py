@@ -79,13 +79,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validated_data.pop('password2')
         role = validated_data.pop('role')
         profile_data = validated_data.pop('profile', {})
-        garage = profile_data.get('garage')
+        normalized_role = normalize_profile_role(role)
+        garage = profile_data.get('garage') if normalized_role != 'client' else None
         date_naissance = validated_data.pop('date_naissance', None)
 
         user = create_basic_user(password=password, **validated_data)
         assign_profile(
             user,
-            role=normalize_profile_role(role),
+            role=normalized_role,
             garage=garage,
             date_naissance=date_naissance,
         )
@@ -185,6 +186,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 class AuthUserSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='profile.role', read_only=True)
     garage_id = serializers.IntegerField(source='profile.garage_id', read_only=True)
+    garage_name = serializers.CharField(source='profile.garage.name', read_only=True)
 
     class Meta:
         model = User
@@ -196,6 +198,7 @@ class AuthUserSerializer(serializers.ModelSerializer):
             'last_name',
             'role',
             'garage_id',
+            'garage_name',
         ]
 
 
@@ -245,7 +248,6 @@ class AuthOwnerRegisterSerializer(GarageRegistrationSerializer):
 
 
 class AuthClientRegisterSerializer(serializers.Serializer):
-    garage_slug = serializers.SlugField(max_length=160)
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=150)
@@ -260,21 +262,14 @@ class AuthClientRegisterSerializer(serializers.Serializer):
         validate_unique_user_fields(username=attrs.get('username'), email=attrs.get('email'))
         validate_user_password(attrs['password'])
 
-        try:
-            attrs['garage'] = Garage.objects.get(slug=attrs['garage_slug'], is_active=True)
-        except Garage.DoesNotExist:
-            raise serializers.ValidationError({'garage_slug': "Aucun garage actif ne correspond a ce slug."})
-
         return attrs
 
     def create(self, validated_data):
-        garage = validated_data.pop('garage')
         password = validated_data.pop('password')
         validated_data.pop('password2')
-        validated_data.pop('garage_slug')
 
         user = create_basic_user(password=password, **validated_data)
-        assign_profile(user, role='client', garage=garage)
+        assign_profile(user, role='client')
         return user
 
     def to_representation(self, instance):

@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.utils.text import slugify
 
-from .models import Garage
+from .models import Garage, ServiceOffert, DisponibiliteGarage
 
 
 class PublicMecanicienSerializer(serializers.Serializer):
@@ -33,10 +33,12 @@ class GarageSerializer(serializers.ModelSerializer):
 
 class PublicGarageSerializer(serializers.ModelSerializer):
     mecaniciens = serializers.SerializerMethodField()
+    services = serializers.SerializerMethodField()
+    disponibilites = serializers.SerializerMethodField()
 
     class Meta:
         model = Garage
-        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens']
+        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens', 'services', 'disponibilites']
 
     def get_mecaniciens(self, obj):
         mecaniciens = User.objects.filter(profile__role='mecanicien', profile__garage=obj).values(
@@ -45,6 +47,44 @@ class PublicGarageSerializer(serializers.ModelSerializer):
             'last_name',
         )
         return PublicMecanicienSerializer(mecaniciens, many=True).data
+
+    def get_services(self, obj):
+        services = obj.services.filter(actif=True)
+        return PublicServiceOffertSerializer(services, many=True).data
+
+    def get_disponibilites(self, obj):
+        disponibilites = obj.disponibilites.filter(actif=True)
+        return DisponibiliteGarageSerializer(disponibilites, many=True).data
+
+
+class PublicGarageListSerializer(serializers.ModelSerializer):
+    mecaniciens_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Garage
+        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens_count']
+
+
+class PublicServiceOffertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceOffert
+        fields = ['id', 'nom', 'description', 'duree_estimee', 'prix_indicatif']
+
+
+class ServiceOffertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceOffert
+        fields = ['id', 'nom', 'description', 'duree_estimee', 'prix_indicatif', 'actif']
+        read_only_fields = ['id']
+
+
+class DisponibiliteGarageSerializer(serializers.ModelSerializer):
+    jour_label = serializers.CharField(source='get_jour_semaine_display', read_only=True)
+
+    class Meta:
+        model = DisponibiliteGarage
+        fields = ['id', 'jour_semaine', 'jour_label', 'heure_debut', 'heure_fin', 'actif']
+        read_only_fields = ['id', 'jour_label']
 
 
 class GarageRegistrationSerializer(serializers.Serializer):

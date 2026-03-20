@@ -23,10 +23,9 @@ def get_user_role(user):
 
 
 def list_mecaniciens_for_garage(garage):
-    queryset = User.objects.filter(profile__role='mecanicien')
-    if garage is not None:
-        queryset = queryset.filter(profile__garage=garage)
-    return queryset
+    if garage is None:
+        return User.objects.none()
+    return User.objects.filter(profile__role='mecanicien', profile__garage=garage)
 
 
 def create_basic_user(*, username, email, first_name, last_name, password):
@@ -53,7 +52,7 @@ def update_user_and_profile(user, *, first_name=None, last_name=None, email=None
     profile = user.profile
     if role is not None:
         profile.role = normalize_profile_role(role, default=profile.role)
-    if garage is not None:
+    if garage is not None or profile.role == 'client':
         profile.garage = garage
     if date_naissance is not None:
         profile.date_naissance = date_naissance
@@ -64,8 +63,7 @@ def update_user_and_profile(user, *, first_name=None, last_name=None, email=None
 def assign_profile(user, *, role, garage=None, date_naissance=None):
     profile = user.profile
     profile.role = normalize_profile_role(role)
-    if garage is not None:
-        profile.garage = garage
+    profile.garage = garage if profile.role != 'client' else None
     if date_naissance is not None:
         profile.date_naissance = date_naissance
     profile.save()

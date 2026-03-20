@@ -114,7 +114,7 @@ function ProfileClient() {
                   style={{ cursor: 'pointer' }}
                 >
                   <FontAwesomeIcon icon={faCalendarAlt} className="me-2 text-info" />
-                  Prendre un rendez-vous
+                  Trouver un garage
                 </Nav.Link>
 
                 <Nav.Link

@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from garages.models import Garage
+from garages.models import DisponibiliteGarage, Garage, ServiceOffert
 from rendez_vous.models import RendezVous
 from vehicules.models import Vehicule
 
@@ -46,7 +46,6 @@ class RendezVousApiTests(APITestCase):
             email='client@example.com',
         )
         self.client_user.profile.role = 'client'
-        self.client_user.profile.garage = self.garage
         self.client_user.profile.save()
 
         self.other_client = User.objects.create_user(
@@ -55,7 +54,6 @@ class RendezVousApiTests(APITestCase):
             email='client2@example.com',
         )
         self.other_client.profile.role = 'client'
-        self.other_client.profile.garage = self.second_garage
         self.other_client.profile.save()
 
         self.mecanicien = User.objects.create_user(
@@ -92,10 +90,47 @@ class RendezVousApiTests(APITestCase):
             annee=2021,
             vin='VIN456',
         )
+        self.service = ServiceOffert.objects.create(
+            garage=self.garage,
+            nom='Vidange',
+            description='Entretien standard',
+        )
+        self.other_service = ServiceOffert.objects.create(
+            garage=self.second_garage,
+            nom='Freinage',
+            description='Inspection freins',
+        )
+        for jour in range(7):
+            DisponibiliteGarage.objects.create(
+                garage=self.garage,
+                jour_semaine=jour,
+                heure_debut='08:00',
+                heure_fin='18:00',
+            )
+            DisponibiliteGarage.objects.create(
+                garage=self.second_garage,
+                jour_semaine=jour,
+                heure_debut='08:00',
+                heure_fin='18:00',
+            )
 
     def authenticate(self, user):
         refresh = RefreshToken.for_user(user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+    def build_local_datetime(self, days=2, hour=10, minute=0):
+        return timezone.localtime(timezone.now() + timedelta(days=days)).replace(
+            hour=hour,
+            minute=minute,
+            second=0,
+            microsecond=0,
+        )
+
+    def assert_same_minute(self, left, right):
+        self.assertEqual(
+            timezone.localtime(left).strftime('%Y-%m-%dT%H:%M'),
+            timezone.localtime(right).strftime('%Y-%m-%dT%H:%M'),
+        )
 
     def test_client_can_create_rendezvous_with_own_vehicle(self):
         self.authenticate(self.client_user)
@@ -103,9 +138,10 @@ class RendezVousApiTests(APITestCase):
         response = self.client.post(
             '/api/rendezvous/',
             {
-                'mecanicien': self.mecanicien.id,
+                'garage': self.garage.id,
                 'vehicule': self.vehicle.id,
-                'date': (timezone.now() + timedelta(days=2)).isoformat(),
+                'service': self.service.id,
+                'date': self.build_local_datetime(days=2, hour=10).isoformat(),
                 'description': 'Freins bruyants',
             },
             format='json',
@@ -122,9 +158,10 @@ class RendezVousApiTests(APITestCase):
         response = self.client.post(
             '/api/rendezvous/',
             {
-                'mecanicien': self.mecanicien.id,
+                'garage': self.garage.id,
                 'vehicule': self.other_vehicle.id,
-                'date': (timezone.now() + timedelta(days=2)).isoformat(),
+                'service': self.service.id,
+                'date': self.build_local_datetime(days=2, hour=10).isoformat(),
                 'description': 'Test',
             },
             format='json',
@@ -133,6 +170,43 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('vehicule', response.data)
 
+    def test_client_cannot_choose_mecanicien_during_creation(self):
+        self.authenticate(self.client_user)
+
+        response = self.client.post(
+            '/api/rendezvous/',
+            {
+                'garage': self.garage.id,
+                'mecanicien': self.mecanicien.id,
+                'vehicule': self.vehicle.id,
+                'service': self.service.id,
+                'date': self.build_local_datetime(days=2, hour=10).isoformat(),
+                'description': 'Demande client',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('mecanicien', response.data)
+
+    def test_client_cannot_choose_service_from_other_garage(self):
+        self.authenticate(self.client_user)
+
+        response = self.client.post(
+            '/api/rendezvous/',
+            {
+                'garage': self.garage.id,
+                'vehicule': self.vehicle.id,
+                'service': self.other_service.id,
+                'date': self.build_local_datetime(days=2, hour=10).isoformat(),
+                'description': 'Demande service invalide',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('service', response.data)
+
     def test_mecanicien_cannot_create_rendezvous(self):
         self.authenticate(self.mecanicien)
 
@@ -140,8 +214,9 @@ class RendezVousApiTests(APITestCase):
             '/api/rendezvous/',
             {
                 'mecanicien': self.other_mecanicien.id,
+                'garage': self.second_garage.id,
                 'vehicule': self.vehicle.id,
-                'date': (timezone.now() + timedelta(days=2)).isoformat(),
+                'date': self.build_local_datetime(days=2, hour=10).isoformat(),
                 'description': 'Test',
             },
             format='json',
@@ -155,7 +230,7 @@ class RendezVousApiTests(APITestCase):
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
-            date=timezone.now() + timedelta(days=2),
+            date=self.build_local_datetime(days=2, hour=10),
             description='Revision',
         )
         self.authenticate(self.client_user)
@@ -175,7 +250,7 @@ class RendezVousApiTests(APITestCase):
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
-            date=timezone.now() + timedelta(days=2),
+            date=self.build_local_datetime(days=2, hour=10),
             description='Pneu use',
         )
         self.authenticate(self.mecanicien)
@@ -194,7 +269,7 @@ class RendezVousApiTests(APITestCase):
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
-            date=timezone.now() + timedelta(days=2),
+            date=self.build_local_datetime(days=2, hour=10),
             description='Vidange',
         )
         self.authenticate(self.mecanicien)
@@ -210,13 +285,157 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(rdv.status, 'confirmed')
         self.assertEqual(str(rdv.quote), '180.00')
 
+    def test_owner_can_confirm_and_assign_mecanicien(self):
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            date=self.build_local_datetime(days=2, hour=10),
+            description='Pneu a verifier',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '1.50',
+                'quote': '120.00',
+                'date': self.build_local_datetime(days=2, hour=11).isoformat(),
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rdv.refresh_from_db()
+        self.assertEqual(rdv.status, 'confirmed')
+        self.assertEqual(rdv.mecanicien, self.mecanicien)
+
+    def test_owner_can_confirm_with_new_date(self):
+        initial_date = self.build_local_datetime(days=2, hour=10)
+        updated_date = self.build_local_datetime(days=5, hour=11)
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            date=initial_date,
+            description='Reprogrammation',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '2.00',
+                'quote': '150.00',
+                'date': updated_date.isoformat(),
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rdv.refresh_from_db()
+        self.assertEqual(rdv.mecanicien, self.mecanicien)
+        self.assertEqual(rdv.status, 'confirmed')
+        self.assert_same_minute(rdv.date, updated_date)
+
+    def test_owner_cannot_confirm_without_mecanicien(self):
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            date=self.build_local_datetime(days=2, hour=10),
+            description='Verification',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'estimatedTime': '1.00',
+                'quote': '90.00',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('mecanicien', response.data)
+
+    def test_owner_cannot_confirm_outside_garage_availability(self):
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            date=self.build_local_datetime(days=2, hour=10),
+            description='Hors disponibilite',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '1.00',
+                'quote': '90.00',
+                'date': self.build_local_datetime(days=2, hour=22).isoformat(),
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('date', response.data)
+
+    def test_owner_cannot_confirm_mecanicien_on_conflicting_slot(self):
+        slot = self.build_local_datetime(days=2, hour=10)
+        RendezVous.objects.create(
+            garage=self.garage,
+            client=self.other_client,
+            mecanicien=self.mecanicien,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=slot,
+            status='confirmed',
+            estimatedTime='1.00',
+            quote='100.00',
+            description='Deja planifie',
+        )
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=slot,
+            description='Conflit planning',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '1.00',
+                'quote': '90.00',
+                'date': slot.isoformat(),
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('mecanicien', response.data)
+
     def test_mecanicien_must_provide_reason_when_rejecting(self):
         rdv = RendezVous.objects.create(
             garage=self.garage,
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
-            date=timezone.now() + timedelta(days=2),
+            date=self.build_local_datetime(days=2, hour=10),
             description='Diagnostic',
         )
         self.authenticate(self.mecanicien)
@@ -236,7 +455,7 @@ class RendezVousApiTests(APITestCase):
             client=self.client_user,
             mecanicien=self.mecanicien,
             vehicule=self.vehicle,
-            date=timezone.now() + timedelta(days=2),
+            date=self.build_local_datetime(days=2, hour=10),
             description='Mon RDV',
         )
         RendezVous.objects.create(
@@ -244,7 +463,7 @@ class RendezVousApiTests(APITestCase):
             client=self.other_client,
             mecanicien=self.mecanicien,
             vehicule=self.other_vehicle,
-            date=timezone.now() + timedelta(days=3),
+            date=self.build_local_datetime(days=3, hour=10),
             description='Autre RDV',
         )
         self.authenticate(self.client_user)
@@ -254,3 +473,23 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['id'], own_rdv.id)
+
+    def test_client_can_create_rendezvous_for_any_active_garage(self):
+        self.authenticate(self.client_user)
+
+        response = self.client.post(
+            '/api/rendezvous/',
+            {
+                'garage': self.second_garage.id,
+                'vehicule': self.vehicle.id,
+                'service': self.other_service.id,
+                'date': self.build_local_datetime(days=4, hour=10).isoformat(),
+                'description': 'Voyant moteur allume',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['garage'], self.second_garage.id)
+        self.assertEqual(response.data['client'], self.client_user.id)
+        self.assertIsNone(response.data['mecanicien'])

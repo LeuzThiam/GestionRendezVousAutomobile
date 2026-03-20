@@ -30,7 +30,9 @@ class RendezVous(models.Model):
     mecanicien = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='rendezvous_mecanicien'
+        related_name='rendezvous_mecanicien',
+        null=True,
+        blank=True,
     )
     vehicule = models.ForeignKey(
         'vehicules.Vehicule',
@@ -38,6 +40,13 @@ class RendezVous(models.Model):
         related_name='rendezvous',
         null=True,
         blank=True
+    )
+    service = models.ForeignKey(
+        'garages.ServiceOffert',
+        on_delete=models.SET_NULL,
+        related_name='rendezvous',
+        null=True,
+        blank=True,
     )
     date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
@@ -63,4 +72,6 @@ class RendezVous(models.Model):
         ordering = ['-date']
 
     def __str__(self):
-        return f"RendezVous #{self.id} - {self.client.username} -> {self.mecanicien.username}"
+        if self.mecanicien_id:
+            return f"RendezVous #{self.id} - {self.client.username} -> {self.mecanicien.username}"
+        return f"RendezVous #{self.id} - {self.client.username} -> {self.garage or 'Garage non defini'}"

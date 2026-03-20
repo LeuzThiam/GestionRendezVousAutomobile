@@ -20,7 +20,7 @@ function ReservationPubliqueGarage() {
   const [success, setSuccess] = useState(null);
   const [formData, setFormData] = useState({
     vehicule: '',
-    mecanicien: '',
+    service: '',
     date: '',
     heure: '',
     description: '',
@@ -73,7 +73,7 @@ function ReservationPubliqueGarage() {
   }, [isAuthenticated, user]);
 
   const canBook = useMemo(() => {
-    return isAuthenticated && user?.role === 'client' && garage && user.garage_id === garage.id;
+    return isAuthenticated && user?.role === 'client' && garage;
   }, [garage, isAuthenticated, user]);
 
   const handleChange = (event) => {
@@ -88,8 +88,9 @@ function ReservationPubliqueGarage() {
 
     try {
       await createRendezVousRequest({
+        garage: garage.id,
         vehicule: Number(formData.vehicule),
-        mecanicien: Number(formData.mecanicien),
+        service: Number(formData.service),
         date: `${formData.date}T${formData.heure}:00`,
         description: formData.description,
       });
@@ -97,7 +98,7 @@ function ReservationPubliqueGarage() {
       setSuccess('Votre rendez-vous a ete envoye au garage.');
       setFormData({
         vehicule: '',
-        mecanicien: '',
+        service: '',
         date: '',
         heure: '',
         description: '',
@@ -136,15 +137,36 @@ function ReservationPubliqueGarage() {
                   <strong>Telephone :</strong> {garage.phone || 'A renseigner'}
                 </Card.Text>
 
-                <h5 className="mb-3">Mecaniciens disponibles</h5>
-                {garage.mecaniciens.length === 0 && (
-                  <p className="text-muted mb-0">Aucun mecanicien n'est encore publie pour ce garage.</p>
-                )}
-                {garage.mecaniciens.map((mecanicien) => (
-                  <div key={mecanicien.id} className="border rounded p-2 mb-2">
-                    {`${mecanicien.first_name} ${mecanicien.last_name}`.trim() || 'Mecanicien'}
-                  </div>
-                ))}
+                <div className="mb-4">
+                  <h5 className="mb-3">Horaires generaux</h5>
+                  {garage.disponibilites?.length ? (
+                    garage.disponibilites.map((dispo) => (
+                      <div key={dispo.id} className="small text-muted mb-1">
+                        <strong>{dispo.jour_label}</strong> : {dispo.heure_debut} - {dispo.heure_fin}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted mb-0">Horaires non renseignes.</p>
+                  )}
+                </div>
+
+                <Alert variant="light" className="mb-0">
+                  Votre demande sera envoyee au garage. L'affectation du mecanicien est geree en
+                  interne par l'equipe du garage.
+                </Alert>
+                <div className="mt-4">
+                  <h5 className="mb-3">Services proposes</h5>
+                  {garage.services?.length ? (
+                    garage.services.map((service) => (
+                      <div key={service.id} className="border rounded p-3 mb-2">
+                        <div className="fw-semibold">{service.nom}</div>
+                        <div className="small text-muted">{service.description || 'Sans description'}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted mb-0">Aucun service publie pour le moment.</p>
+                  )}
+                </div>
               </Card.Body>
             </Card>
           </Col>
@@ -156,9 +178,12 @@ function ReservationPubliqueGarage() {
 
                 {!isAuthenticated && (
                   <Alert variant="info">
-                    Connectez-vous d'abord avec un compte client rattache a ce garage pour reserver.
+                    Connectez-vous avec un compte client pour reserver avec ce garage.
                     <div className="mt-2">
                       <Link to="/connexion">Aller a la connexion</Link>
+                    </div>
+                    <div className="mt-2">
+                      <Link to="/inscription">Creer un compte client</Link>
                     </div>
                   </Alert>
                 )}
@@ -169,19 +194,38 @@ function ReservationPubliqueGarage() {
                   </Alert>
                 )}
 
-                {isAuthenticated && user?.role === 'client' && garage && user.garage_id !== garage.id && (
-                  <Alert variant="warning">
-                    Ce compte client n'appartient pas a ce garage. Utilisez un compte client du meme garage.
-                  </Alert>
-                )}
-
                 {canBook && (
                   <>
                     {success && <Alert variant="success">{success}</Alert>}
                     {vehiclesLoading && <p>Chargement des vehicules...</p>}
                     {vehiclesError && <Alert variant="danger">{vehiclesError}</Alert>}
-
+                    {!vehiclesLoading && vehicles.length === 0 && (
+                      <Alert variant="warning">
+                        Ajoutez d'abord un vehicule dans votre espace client avant de reserver.
+                        <div className="mt-2">
+                          <Link to="/profil/client/vehicules">Gerer mes vehicules</Link>
+                        </div>
+                      </Alert>
+                    )}
                     <Form onSubmit={handleSubmit}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Service demande</Form.Label>
+                        <Form.Select
+                          name="service"
+                          value={formData.service}
+                          onChange={handleChange}
+                          required
+                          disabled={!garage.services?.length}
+                        >
+                          <option value="">Selectionnez un service</option>
+                          {garage.services?.map((service) => (
+                            <option key={service.id} value={service.id}>
+                              {service.nom}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+
                       <Form.Group className="mb-3">
                         <Form.Label>Vehicule</Form.Label>
                         <Form.Select
@@ -189,28 +233,12 @@ function ReservationPubliqueGarage() {
                           value={formData.vehicule}
                           onChange={handleChange}
                           required
+                          disabled={vehicles.length === 0}
                         >
                           <option value="">Selectionnez un vehicule</option>
                           {vehicles.map((vehicle) => (
                             <option key={vehicle.id} value={vehicle.id}>
                               {vehicle.marque} {vehicle.modele} ({vehicle.annee})
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Form.Group>
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>Mecanicien</Form.Label>
-                        <Form.Select
-                          name="mecanicien"
-                          value={formData.mecanicien}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="">Selectionnez un mecanicien</option>
-                          {garage.mecaniciens.map((mecanicien) => (
-                            <option key={mecanicien.id} value={mecanicien.id}>
-                              {`${mecanicien.first_name} ${mecanicien.last_name}`.trim() || `Mecanicien #${mecanicien.id}`}
                             </option>
                           ))}
                         </Form.Select>
@@ -257,7 +285,12 @@ function ReservationPubliqueGarage() {
                         />
                       </Form.Group>
 
-                      <Button type="submit">Envoyer la reservation</Button>
+                      <Button
+                        type="submit"
+                        disabled={vehicles.length === 0 || !garage.services?.length}
+                      >
+                        Envoyer la reservation
+                      </Button>
                     </Form>
                   </>
                 )}

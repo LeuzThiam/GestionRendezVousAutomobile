@@ -455,6 +455,40 @@ function DashboardGarage() {
           <Card className="shadow-sm h-100 border-0 dashboard-action-card">
             <Card.Body className="p-4">
               <div className="dashboard-action-head">
+                <FontAwesomeIcon icon={faClock} />
+                <Card.Title className="mb-0">Disponibilites</Card.Title>
+              </div>
+              <Card.Text>
+                Definissez les creneaux hebdomadaires affiches aux clients et posez la base du planning.
+              </Card.Text>
+              <Button as={Link} to="/garage/disponibilites" variant="outline-dark">
+                Gerer les horaires
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={4}>
+          <Card className="shadow-sm h-100 border-0 dashboard-action-card">
+            <Card.Body className="p-4">
+              <div className="dashboard-action-head">
+                <FontAwesomeIcon icon={faBolt} />
+                <Card.Title className="mb-0">Services</Card.Title>
+              </div>
+              <Card.Text>
+                Publiez les prestations visibles sur votre fiche publique et structurez les demandes clients.
+              </Card.Text>
+              <Button as={Link} to="/garage/services" variant="outline-dark">
+                Gerer les services
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={4}>
+          <Card className="shadow-sm h-100 border-0 dashboard-action-card">
+            <Card.Body className="p-4">
+              <div className="dashboard-action-head">
                 <FontAwesomeIcon icon={faCalendarCheck} />
                 <Card.Title className="mb-0">Reservations</Card.Title>
               </div>
@@ -463,11 +497,9 @@ function DashboardGarage() {
                   ? `${metrics.pendingCount} demande(s) attendent une action de votre equipe.`
                   : 'Aucune demande en attente pour le moment.'}
               </Card.Text>
-              {currentGarage?.slug && (
-                <Button as={Link} to={`/garage/${currentGarage.slug}/reservation`} variant="outline-dark">
-                  Voir la page publique
-                </Button>
-              )}
+              <Button as={Link} to="/garage/rendez-vous" variant="outline-dark">
+                Gerer les demandes
+              </Button>
             </Card.Body>
           </Card>
         </Col>

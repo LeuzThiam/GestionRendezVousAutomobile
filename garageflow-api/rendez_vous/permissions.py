@@ -8,4 +8,4 @@ class IsClientForCreate(BasePermission):
         if request.method != 'POST':
             return True
         profile = getattr(request.user, 'profile', None)
-        return getattr(profile, 'role', None) == 'client' and getattr(profile, 'garage', None) is not None
+        return getattr(profile, 'role', None) == 'client'

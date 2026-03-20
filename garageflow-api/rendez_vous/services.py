@@ -18,8 +18,6 @@ def get_rendezvous_queryset_for_user(user):
 
 
 def get_rendezvous_creation_payload(user):
-    profile = getattr(user, 'profile', None)
     return {
         'client': user,
-        'garage': getattr(profile, 'garage', None),
     }

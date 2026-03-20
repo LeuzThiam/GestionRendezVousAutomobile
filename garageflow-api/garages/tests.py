@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from garages.models import Garage
+from garages.models import DisponibiliteGarage, Garage, ServiceOffert
 
 
 class GarageApiTests(APITestCase):
@@ -71,6 +71,19 @@ class GarageApiTests(APITestCase):
         mecanicien.profile.role = 'mecanicien'
         mecanicien.profile.garage = garage
         mecanicien.profile.save()
+        ServiceOffert.objects.create(
+            garage=garage,
+            nom='Vidange',
+            description='Entretien huile moteur',
+            duree_estimee='1.00',
+            prix_indicatif='79.99',
+        )
+        DisponibiliteGarage.objects.create(
+            garage=garage,
+            jour_semaine=0,
+            heure_debut='08:00',
+            heure_fin='12:00',
+        )
 
         response = self.client.get('/api/garages/public/garage-public/')
 
@@ -78,3 +91,73 @@ class GarageApiTests(APITestCase):
         self.assertEqual(response.data['name'], 'Garage Public')
         self.assertEqual(len(response.data['mecaniciens']), 1)
         self.assertEqual(response.data['mecaniciens'][0]['first_name'], 'Jean')
+        self.assertEqual(len(response.data['services']), 1)
+        self.assertEqual(response.data['services'][0]['nom'], 'Vidange')
+        self.assertEqual(len(response.data['disponibilites']), 1)
+        self.assertEqual(response.data['disponibilites'][0]['jour_label'], 'Lundi')
+
+    def test_public_garage_list_can_be_searched(self):
+        owner = User.objects.create_user(
+            username='owner4',
+            email='owner4@example.com',
+            password='testpass123',
+        )
+        garage = Garage.objects.create(name='Garage Recherche', slug='garage-recherche', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        response = self.client.get('/api/garages/public/?q=recher')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['slug'], 'garage-recherche')
+
+    def test_owner_can_create_service_for_garage(self):
+        owner = User.objects.create_user(username='owner-service', password='testpass123')
+        garage = Garage.objects.create(name='Garage Service', slug='garage-service', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/garages/me/services/',
+            {
+                'nom': 'Diagnostic',
+                'description': 'Analyse electronique du vehicule',
+                'duree_estimee': '0.75',
+                'prix_indicatif': '49.99',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(ServiceOffert.objects.filter(garage=garage).count(), 1)
+
+    def test_owner_can_create_disponibilite_for_garage(self):
+        owner = User.objects.create_user(username='owner-dispo', password='testpass123')
+        garage = Garage.objects.create(name='Garage Dispo', slug='garage-dispo', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/garages/me/disponibilites/',
+            {
+                'jour_semaine': 2,
+                'heure_debut': '09:00',
+                'heure_fin': '17:00',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(DisponibiliteGarage.objects.filter(garage=garage).count(), 1)

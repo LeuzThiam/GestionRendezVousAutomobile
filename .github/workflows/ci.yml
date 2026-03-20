@@ -11,6 +11,9 @@ on:
     branches:
       - master
       - dev
+      - feature/**
+      - fix/**
+  workflow_dispatch:
 
 jobs:
   frontend:
@@ -57,6 +60,12 @@ jobs:
 
       - name: Installer les dependances backend
         run: pip install -r requirements-ci.txt
+
+      - name: Verifier les migrations manquantes
+        run: python manage.py makemigrations --check --dry-run
+        env:
+          DJANGO_SECRET_KEY: ci-secret-key-long-pour-github-actions-123456
+          DJANGO_DEBUG: "False"
 
       - name: Verifier les migrations Django
         run: python manage.py migrate --noinput
