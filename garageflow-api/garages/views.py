@@ -20,15 +20,16 @@ class GarageRegistrationView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-class CurrentGarageView(APIView):
+class CurrentGarageView(generics.RetrieveUpdateAPIView):
+    serializer_class = GarageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        garage = getattr(request.user.profile, 'garage', None)
+    def get_object(self):
+        garage = getattr(self.request.user.profile, 'garage', None)
         if garage is None:
-            return Response({'detail': "Aucun garage associe a cet utilisateur."}, status=404)
-        serializer = GarageSerializer(garage)
-        return Response(serializer.data)
+            from rest_framework.exceptions import NotFound
+            raise NotFound("Aucun garage associe a cet utilisateur.")
+        return garage
 
 
 class PublicGarageDetailView(generics.RetrieveAPIView):

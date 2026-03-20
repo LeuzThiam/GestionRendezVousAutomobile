@@ -52,6 +52,41 @@ class GarageApiTests(APITestCase):
         self.assertEqual(response.data['id'], garage.id)
         self.assertEqual(response.data['name'], 'Garage Laval')
 
+    def test_owner_can_update_current_garage_profile(self):
+        owner = User.objects.create_user(
+            username='owner-update',
+            email='owner-update@example.com',
+            password='testpass123',
+        )
+        garage = Garage.objects.create(
+            name='Garage Profil',
+            slug='garage-profil',
+            owner=owner,
+            address='Adresse initiale',
+        )
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.patch(
+            '/api/garages/me/',
+            {
+                'phone': '5810000000',
+                'address': 'Nouvelle adresse',
+                'description': 'Garage specialise en entretien preventif.',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        garage.refresh_from_db()
+        self.assertEqual(garage.phone, '5810000000')
+        self.assertEqual(garage.address, 'Nouvelle adresse')
+        self.assertEqual(garage.description, 'Garage specialise en entretien preventif.')
+
     def test_public_garage_detail_returns_public_information(self):
         owner = User.objects.create_user(
             username='owner3',

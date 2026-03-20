@@ -411,6 +411,23 @@ function DashboardGarage() {
           <Card className="shadow-sm h-100 border-0 dashboard-action-card">
             <Card.Body className="p-4">
               <div className="dashboard-action-head">
+                <FontAwesomeIcon icon={faBuilding} />
+                <Card.Title className="mb-0">Profil garage</Card.Title>
+              </div>
+              <Card.Text>
+                Mettez a jour le nom, l adresse, le telephone et la description visibles par les clients.
+              </Card.Text>
+              <Button as={Link} to="/garage/profil" variant="outline-dark">
+                Modifier le profil
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={4}>
+          <Card className="shadow-sm h-100 border-0 dashboard-action-card">
+            <Card.Body className="p-4">
+              <div className="dashboard-action-head">
                 <FontAwesomeIcon icon={faScrewdriverWrench} />
                 <Card.Title className="mb-0">Equipe mecanique</Card.Title>
               </div>
@@ -438,6 +455,23 @@ function DashboardGarage() {
               </Card.Text>
               <Button as={Link} to="/garage/disponibilites" variant="outline-dark">
                 Gerer les horaires
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={4}>
+          <Card className="shadow-sm h-100 border-0 dashboard-action-card">
+            <Card.Body className="p-4">
+              <div className="dashboard-action-head">
+                <FontAwesomeIcon icon={faCalendarCheck} />
+                <Card.Title className="mb-0">Planning</Card.Title>
+              </div>
+              <Card.Text>
+                Consultez les rendez-vous confirmes par jour et visualisez rapidement la charge de l atelier.
+              </Card.Text>
+              <Button as={Link} to="/garage/planning" variant="outline-dark">
+                Ouvrir le planning
               </Button>
             </Card.Body>
           </Card>

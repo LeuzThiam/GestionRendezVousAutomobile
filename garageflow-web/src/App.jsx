@@ -23,8 +23,10 @@ import Connexion from "./Pages/Connexion.jsx";
 import DashboardGarage from "./Pages/DashboardGarage.jsx";
 import GestionDisponibilitesGarage from "./Pages/GestionDisponibilitesGarage.jsx";
 import GestionMecaniciensGarage from "./Pages/GestionMecaniciensGarage.jsx";
+import GestionProfilGarage from "./Pages/GestionProfilGarage.jsx";
 import GestionRendezVousGarage from "./Pages/GestionRendezVousGarage.jsx";
 import GestionServicesGarage from "./Pages/GestionServicesGarage.jsx";
+import PlanningGarage from "./Pages/PlanningGarage.jsx";
 import ReservationPubliqueGarage from "./Pages/ReservationPubliqueGarage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 
@@ -58,6 +60,14 @@ function App() {
             }
           />
           <Route
+            path="/garage/profil"
+            element={
+              <ProtectedRoute allowedRoles={["owner"]}>
+                <GestionProfilGarage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/garage/mecaniciens"
             element={
               <ProtectedRoute allowedRoles={["owner"]}>
@@ -70,6 +80,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["owner"]}>
                 <GestionRendezVousGarage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/garage/planning"
+            element={
+              <ProtectedRoute allowedRoles={["owner"]}>
+                <PlanningGarage />
               </ProtectedRoute>
             }
           />
