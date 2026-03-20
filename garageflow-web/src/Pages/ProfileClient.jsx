@@ -1,7 +1,7 @@
 // src/Pages/ProfileClient.jsx
 
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Form, Container, Row, Col, Nav } from 'react-bootstrap';
+import { Alert, Badge, Card, Button, Form, Container, Row, Col, Nav } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faUserEdit,
@@ -23,6 +23,8 @@ function ProfileClient() {
 
   const [selectedComponent, setSelectedComponent] = useState('edit');
   const [isEditing, setIsEditing] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
+  const [localError, setLocalError] = useState(null);
 
   // Champs alignés avec votre API
   const [formData, setFormData] = useState({
@@ -51,18 +53,32 @@ function ProfileClient() {
 
   // Toggle édition
   const handleEditToggle = () => {
+    setSaveMessage(null);
+    setLocalError(null);
     setIsEditing(!isEditing);
   };
 
   // Soumission => PATCH /api/users/profile/update/
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSaveMessage(null);
+    setLocalError(null);
     updateUser(formData)
       .then(() => {
         setIsEditing(false);
+        setSaveMessage('Vos informations personnelles ont ete mises a jour.');
         return refreshUser();
       })
-      .catch(() => {});
+      .catch((requestError) => {
+        const payload = requestError?.response?.data;
+        if (typeof payload === 'string') {
+          setLocalError(payload);
+        } else if (payload && typeof payload === 'object') {
+          setLocalError(Object.values(payload).flat().join(' '));
+        } else {
+          setLocalError("Impossible de mettre a jour votre profil.");
+        }
+      });
   };
 
   const handleComponentSelect = (component) => {
@@ -77,6 +93,45 @@ function ProfileClient() {
       ) : error ? (
         <p style={{ color: 'red' }}>{error}</p>
       ) : null}
+
+      <Card className="shadow-sm border-0 mb-4">
+        <Card.Body>
+          <Row className="align-items-center g-3">
+            <Col lg={8}>
+              <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <Badge bg="dark">Espace client</Badge>
+                <Badge bg="secondary">{currentUser?.role || 'client'}</Badge>
+              </div>
+              <h1 className="h3 mb-1">
+                {currentUser?.first_name || currentUser?.username || 'Client'} {currentUser?.last_name || ''}
+              </h1>
+              <p className="text-muted mb-0">
+                Gere vos informations personnelles, vos vehicules et vos rendez-vous depuis un seul espace.
+              </p>
+            </Col>
+            <Col lg={4}>
+              <Row className="g-3">
+                <Col xs={6}>
+                  <Card className="border h-100">
+                    <Card.Body>
+                      <div className="small text-muted">Courriel</div>
+                      <div className="fw-semibold">{currentUser?.email || '-'}</div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+                <Col xs={6}>
+                  <Card className="border h-100">
+                    <Card.Body>
+                      <div className="small text-muted">Compte</div>
+                      <div className="fw-semibold">{currentUser?.username || '-'}</div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
 
       <Row>
         <Col xs={12} md={4} lg={3} className="mb-4">
@@ -137,6 +192,8 @@ function ProfileClient() {
           {selectedComponent === 'edit' && (
             <Card className="shadow-lg border-0 mb-4 bg-white rounded-lg">
               <Card.Body>
+                {saveMessage && <Alert variant="success">{saveMessage}</Alert>}
+                {localError && <Alert variant="danger">{localError}</Alert>}
                 <Card.Title className="text-center mb-4">
                   <FontAwesomeIcon icon={faUserEdit} className="me-2" />
                   Modifier mes informations

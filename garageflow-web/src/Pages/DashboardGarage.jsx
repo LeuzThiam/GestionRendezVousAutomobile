@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import { fetchGarageMecaniciensRequest } from '../api/mecaniciens';
 import { fetchRendezVousRequest } from '../api/rendezVous';
 import { useAuth } from '../shared/auth/AuthContext';
+import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/rendezVousStatus';
 
 function DashboardGarage() {
   const { currentGarage, loading, error, user, refreshCurrentGarage } = useAuth();
@@ -165,32 +166,6 @@ function DashboardGarage() {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));
-  };
-
-  const getStatusLabel = (status) => {
-    const labels = {
-      pending: 'En attente',
-      confirmed: 'Confirme',
-      modification_requested: 'Modification',
-      cancelled: 'Annule',
-      rejected: 'Refuse',
-      refused: 'Refuse',
-    };
-
-    return labels[status] || status;
-  };
-
-  const getStatusVariant = (status) => {
-    const variants = {
-      pending: 'warning',
-      confirmed: 'success',
-      modification_requested: 'info',
-      cancelled: 'secondary',
-      rejected: 'danger',
-      refused: 'danger',
-    };
-
-    return variants[status] || 'secondary';
   };
 
   return (
@@ -374,8 +349,8 @@ function DashboardGarage() {
                           {item.description || 'Sans description'}
                         </div>
                       </div>
-                      <Badge bg={getStatusVariant(item.status)}>
-                        {getStatusLabel(item.status)}
+                      <Badge bg={getRendezVousStatusVariant(item.status)}>
+                        {getRendezVousStatusLabel(item.status)}
                       </Badge>
                     </div>
                   ))}

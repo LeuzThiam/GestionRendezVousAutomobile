@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { fetchGarageMecaniciensRequest } from '../api/mecaniciens';
 import { fetchRendezVousRequest, updateRendezVousRequest } from '../api/rendezVous';
+import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/rendezVousStatus';
 
 function flattenError(error) {
   if (!error) {
@@ -25,18 +26,6 @@ function formatDateTime(value) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
-}
-
-function statusLabel(status) {
-  const labels = {
-    pending: 'En attente',
-    confirmed: 'Confirme',
-    modification_requested: 'Reprogrammation demandee',
-    rejected: 'Refuse',
-    cancelled: 'Annule',
-    done: 'Termine',
-  };
-  return labels[status] || status;
 }
 
 function GestionRendezVousGarage() {
@@ -171,10 +160,10 @@ function GestionRendezVousGarage() {
             <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
               <div>
                 <Card.Title className="mb-1">{formatDateTime(rdv.date)}</Card.Title>
-                <div className="text-muted small">{statusLabel(rdv.status)}</div>
+                <div className="text-muted small">{getRendezVousStatusLabel(rdv.status)}</div>
               </div>
-              <Badge bg={rdv.status === 'confirmed' ? 'success' : rdv.status === 'pending' ? 'warning' : 'secondary'}>
-                {statusLabel(rdv.status)}
+              <Badge bg={getRendezVousStatusVariant(rdv.status)}>
+                {getRendezVousStatusLabel(rdv.status)}
               </Badge>
             </div>
 

@@ -1,10 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchPublicGarageRequest } from '../api/garages';
 import { createRendezVousRequest } from '../api/rendezVous';
 import { fetchVehiculesRequest } from '../api/vehicules';
 import { useAuth } from '../shared/auth/AuthContext';
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  return new Intl.NumberFormat('fr-CA', {
+    style: 'currency',
+    currency: 'CAD',
+  }).format(Number(value));
+}
 
 function ReservationPubliqueGarage() {
   const { slug } = useParams();
@@ -76,6 +87,22 @@ function ReservationPubliqueGarage() {
     return isAuthenticated && user?.role === 'client' && garage;
   }, [garage, isAuthenticated, user]);
 
+  const garageHighlights = useMemo(() => {
+    if (!garage) {
+      return [];
+    }
+
+    const activeServices = garage.services?.length || 0;
+    const activeSlots = garage.disponibilites?.length || 0;
+    const teamCount = garage.mecaniciens?.length || 0;
+
+    return [
+      { label: 'Services actifs', value: activeServices },
+      { label: 'Creneaux affiches', value: activeSlots },
+      { label: 'Equipe atelier', value: teamCount },
+    ];
+  }, [garage]);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
@@ -125,44 +152,116 @@ function ReservationPubliqueGarage() {
       {error && <Alert variant="danger">{error}</Alert>}
 
       {garage && (
-        <Row className="g-4">
-          <Col lg={5}>
-            <Card className="shadow-sm h-100">
+        <>
+          <Card className="shadow-sm border-0 mb-4">
+            <Card.Body className="p-4">
+              <Row className="g-4 align-items-start">
+                <Col lg={8}>
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <Badge bg="dark">Garage</Badge>
+                    {garage.services?.length > 0 && <Badge bg="success">Reservation disponible</Badge>}
+                  </div>
+                  <h1 className="h3 mb-2">{garage.name}</h1>
+                  <p className="text-muted mb-3">
+                    Consultez la fiche du garage, les services proposes et ses horaires avant d'envoyer votre demande.
+                  </p>
+                  <div className="d-flex flex-column gap-2">
+                    <div>
+                      <strong>Adresse :</strong> {garage.address || 'A renseigner'}
+                    </div>
+                    <div>
+                      <strong>Telephone :</strong> {garage.phone || 'A renseigner'}
+                    </div>
+                    <div>
+                      <strong>Slug public :</strong> {garage.slug}
+                    </div>
+                  </div>
+                </Col>
+                <Col lg={4}>
+                  <Row className="g-3">
+                    {garageHighlights.map((item) => (
+                      <Col xs={12} sm={4} lg={12} key={item.label}>
+                        <Card className="border h-100">
+                          <Card.Body>
+                            <div className="text-muted small">{item.label}</div>
+                            <div className="fs-4 fw-semibold">{item.value}</div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+
+          <Row className="g-4">
+            <Col lg={5}>
+            <Card className="shadow-sm h-100 border-0">
               <Card.Body>
-                <Card.Title>{garage.name}</Card.Title>
-                <Card.Text className="mb-2">
-                  <strong>Adresse :</strong> {garage.address || 'A renseigner'}
-                </Card.Text>
-                <Card.Text className="mb-4">
-                  <strong>Telephone :</strong> {garage.phone || 'A renseigner'}
-                </Card.Text>
+                <Card.Title className="mb-4">Informations du garage</Card.Title>
 
                 <div className="mb-4">
-                  <h5 className="mb-3">Horaires generaux</h5>
+                  <h5 className="mb-3">Resume</h5>
+                  <p className="text-muted mb-2">
+                    Ce garage recoit vos demandes de rendez-vous en ligne et organise ensuite l'intervention en interne.
+                  </p>
+                  <p className="text-muted mb-0">
+                    Vous choisissez un service, un vehicule et un creneau souhaite. Le garage confirme ensuite la prise en charge.
+                  </p>
+                </div>
+
+                <div className="mb-4">
+                  <h5 className="mb-3">Horaires affiches</h5>
                   {garage.disponibilites?.length ? (
-                    garage.disponibilites.map((dispo) => (
-                      <div key={dispo.id} className="small text-muted mb-1">
-                        <strong>{dispo.jour_label}</strong> : {dispo.heure_debut} - {dispo.heure_fin}
-                      </div>
-                    ))
+                    <div className="d-flex flex-column gap-2">
+                      {garage.disponibilites.map((dispo) => (
+                        <div key={dispo.id} className="border rounded p-3">
+                          <div className="fw-semibold">{dispo.jour_label}</div>
+                          <div className="small text-muted">
+                            {dispo.heure_debut} - {dispo.heure_fin}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-muted mb-0">Horaires non renseignes.</p>
                   )}
                 </div>
 
-                <Alert variant="light" className="mb-0">
+                <Alert variant="light" className="mb-4">
                   Votre demande sera envoyee au garage. L'affectation du mecanicien est geree en
                   interne par l'equipe du garage.
                 </Alert>
+
                 <div className="mt-4">
                   <h5 className="mb-3">Services proposes</h5>
                   {garage.services?.length ? (
-                    garage.services.map((service) => (
-                      <div key={service.id} className="border rounded p-3 mb-2">
-                        <div className="fw-semibold">{service.nom}</div>
-                        <div className="small text-muted">{service.description || 'Sans description'}</div>
-                      </div>
-                    ))
+                    <div className="d-flex flex-column gap-3">
+                      {garage.services.map((service) => (
+                        <div key={service.id} className="border rounded p-3">
+                          <div className="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                              <div className="fw-semibold">{service.nom}</div>
+                              <div className="small text-muted">
+                                {service.description || 'Sans description'}
+                              </div>
+                            </div>
+                            <Badge bg="light" text="dark">Service</Badge>
+                          </div>
+                          <div className="d-flex flex-wrap gap-3 mt-3 small">
+                            <div>
+                              <strong>Duree estimee :</strong>{' '}
+                              {service.duree_estimee ? `${service.duree_estimee} h` : 'Non precisee'}
+                            </div>
+                            <div>
+                              <strong>Prix indicatif :</strong>{' '}
+                              {formatCurrency(service.prix_indicatif) || 'Non precise'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-muted mb-0">Aucun service publie pour le moment.</p>
                   )}
@@ -172,9 +271,17 @@ function ReservationPubliqueGarage() {
           </Col>
 
           <Col lg={7}>
-            <Card className="shadow-sm">
+            <Card className="shadow-sm border-0">
               <Card.Body>
-                <Card.Title className="mb-3">Reserver un rendez-vous</Card.Title>
+                <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div>
+                    <Card.Title className="mb-1">Demander un rendez-vous</Card.Title>
+                    <p className="text-muted mb-0">
+                      Remplissez ce formulaire pour envoyer votre demande directement au garage.
+                    </p>
+                  </div>
+                  <Badge bg="primary">Client</Badge>
+                </div>
 
                 {!isAuthenticated && (
                   <Alert variant="info">
@@ -224,6 +331,9 @@ function ReservationPubliqueGarage() {
                             </option>
                           ))}
                         </Form.Select>
+                        <Form.Text className="text-muted">
+                          Le service choisi permet au garage de mieux preparer votre prise en charge.
+                        </Form.Text>
                       </Form.Group>
 
                       <Form.Group className="mb-3">
@@ -255,6 +365,9 @@ function ReservationPubliqueGarage() {
                               onChange={handleChange}
                               required
                             />
+                            <Form.Text className="text-muted">
+                              Choisissez la date souhaitee.
+                            </Form.Text>
                           </Form.Group>
                         </Col>
 
@@ -268,6 +381,9 @@ function ReservationPubliqueGarage() {
                               onChange={handleChange}
                               required
                             />
+                            <Form.Text className="text-muted">
+                              L'heure sera validee par le garage selon ses disponibilites.
+                            </Form.Text>
                           </Form.Group>
                         </Col>
                       </Row>
@@ -289,7 +405,7 @@ function ReservationPubliqueGarage() {
                         type="submit"
                         disabled={vehicles.length === 0 || !garage.services?.length}
                       >
-                        Envoyer la reservation
+                        Envoyer ma demande
                       </Button>
                     </Form>
                   </>
@@ -308,7 +424,8 @@ function ReservationPubliqueGarage() {
               </Card.Body>
             </Card>
           </Col>
-        </Row>
+          </Row>
+        </>
       )}
     </Container>
   );

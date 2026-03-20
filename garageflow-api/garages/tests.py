@@ -113,6 +113,35 @@ class GarageApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['slug'], 'garage-recherche')
 
+    def test_public_garage_list_includes_services_and_supports_service_search(self):
+        owner = User.objects.create_user(
+            username='owner5',
+            email='owner5@example.com',
+            password='testpass123',
+        )
+        garage = Garage.objects.create(
+            name='Garage Filtre',
+            slug='garage-filtre',
+            owner=owner,
+            address='Quebec',
+        )
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+        ServiceOffert.objects.create(
+            garage=garage,
+            nom='Climatisation',
+            description='Entretien de la climatisation',
+            actif=True,
+        )
+
+        response = self.client.get('/api/garages/public/?q=clim')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['slug'], 'garage-filtre')
+        self.assertIn('Climatisation', response.data[0]['services'])
+
     def test_owner_can_create_service_for_garage(self):
         owner = User.objects.create_user(username='owner-service', password='testpass123')
         garage = Garage.objects.create(name='Garage Service', slug='garage-service', owner=owner)

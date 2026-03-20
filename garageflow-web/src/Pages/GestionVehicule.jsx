@@ -1,18 +1,19 @@
-// src/GestionVehicules.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
-  Card,
+  Alert,
+  Badge,
   Button,
-  Form,
-  Container,
-  Row,
+  Card,
   Col,
+  Container,
+  Form,
   ListGroup,
-  Alert
+  Row,
+  Spinner,
 } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCar, faTrash, faPlus, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { faCar, faEdit, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import {
   createVehiculeRequest,
   deleteVehiculeRequest,
@@ -20,334 +21,400 @@ import {
   updateVehiculeRequest,
 } from '../api/vehicules';
 
+const EMPTY_VEHICLE_FORM = {
+  marque: '',
+  modele: '',
+  annee: '',
+  vin: '',
+  body_class: '',
+  vehicle_type: '',
+};
+
 function GestionVehicule() {
   const [vehicles, setVehicles] = useState([]);
-
-  // Saisie pour VIN
   const [vin, setVin] = useState('');
-  // Résultat renvoyé par l’API NHTSA
   const [vehicleFromVin, setVehicleFromVin] = useState(null);
-  // Formulaire manuel ou édition
-  const [manualVehicle, setManualVehicle] = useState({
-    marque: '',
-    modele: '',
-    annee: ''
-  });
-  // Véhicule en cours d’édition (ou null si on est en mode ajout)
+  const [manualVehicle, setManualVehicle] = useState(EMPTY_VEHICLE_FORM);
   const [editVehicle, setEditVehicle] = useState(null);
-  // Gestion d’erreur / message
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [vinLoading, setVinLoading] = useState(false);
 
-  // ------------- 1) Charger la liste depuis l’API au montage -------------
+  const loadVehicles = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setVehicles(await fetchVehiculesRequest());
+    } catch (err) {
+      console.error(err);
+      setError("Impossible de charger vos vehicules.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchVehiculesRequest()
-      .then((data) => {
-        setVehicles(data);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError(
-          "Impossible de charger les véhicules depuis l’API (erreur d’auth ?)."
-        );
-      });
+    loadVehicles();
   }, []);
 
-  // ------------- 2) Rechercher un véhicule via VIN (API NHTSA) -------------
-  const handleVinSubmit = () => {
+  const resetForm = () => {
+    setManualVehicle(EMPTY_VEHICLE_FORM);
+    setEditVehicle(null);
+    setVehicleFromVin(null);
+    setVin('');
+  };
+
+  const handleVinSubmit = async () => {
     setError(null);
+    setSuccess(null);
     setVehicleFromVin(null);
 
-    if (!vin) {
-      setError('Veuillez saisir un VIN');
+    if (!vin.trim()) {
+      setError('Veuillez saisir un VIN.');
       return;
     }
 
-    axios
-      .get(
-        `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${vin}?format=json`
-      )
-      .then((response) => {
-        const data = response.data.Results[0];
-        if (data.Make && data.Model && data.ModelYear) {
-          const foundVehicle = {
-            marque: data.Make,
-            modele: data.Model,
-            annee: data.ModelYear,
-            body_class: data.BodyClass || 'N/A',
-            vehicle_type: data.VehicleType || 'N/A'
-          };
-          setVehicleFromVin(foundVehicle);
-          setVin(''); // on vide le champ VIN
-        } else {
-          setError('Aucune information valide trouvée pour ce VIN.');
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Erreur lors de l'appel à l'API NHTSA.");
+    try {
+      setVinLoading(true);
+      const response = await axios.get(
+        `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${vin.trim()}?format=json`
+      );
+      const data = response.data.Results[0];
+
+      if (!data.Make || !data.Model || !data.ModelYear) {
+        setError('Aucune information exploitable n a ete trouvee pour ce VIN.');
+        return;
+      }
+
+      setVehicleFromVin({
+        marque: data.Make,
+        modele: data.Model,
+        annee: data.ModelYear,
+        vin: vin.trim(),
+        body_class: data.BodyClass || '',
+        vehicle_type: data.VehicleType || '',
       });
+      setSuccess('Les informations du vehicule ont ete recuperees.');
+    } catch (err) {
+      console.error(err);
+      setError("Erreur lors de la recherche du VIN.");
+    } finally {
+      setVinLoading(false);
+    }
   };
 
-  // ------------- 3) Ajouter le véhicule récupéré via VIN -------------
-  const handleAddVehicleFromVin = () => {
-    if (!vehicleFromVin) return;
+  const handleAddVehicleFromVin = async () => {
+    if (!vehicleFromVin) {
+      return;
+    }
 
-    const newVehicle = {
-      marque: vehicleFromVin.marque,
-      modele: vehicleFromVin.modele,
-      annee: vehicleFromVin.annee,
-      body_class: vehicleFromVin.body_class,
-      vehicle_type: vehicleFromVin.vehicle_type
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+      const data = await createVehiculeRequest(vehicleFromVin);
+      setVehicles((current) => [...current, data]);
+      setSuccess('Le vehicule a ete ajoute a votre espace.');
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      setError("Impossible d'ajouter ce vehicule.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleManualChange = (field, value) => {
+    setManualVehicle((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleManualSubmit = async () => {
+    setError(null);
+    setSuccess(null);
+
+    const payload = {
+      marque: manualVehicle.marque.trim(),
+      modele: manualVehicle.modele.trim(),
+      annee: manualVehicle.annee,
+      vin: manualVehicle.vin.trim() || null,
+      body_class: manualVehicle.body_class.trim() || 'Non specifie',
+      vehicle_type: manualVehicle.vehicle_type.trim() || 'Non specifie',
     };
 
-    createVehiculeRequest(newVehicle)
-      .then((data) => {
-        setVehicles((current) => [...current, data]);
-        setVehicleFromVin(null);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Impossible d'ajouter ce véhicule via l'API locale.");
-      });
-  };
-
-  // ------------- 4) Ajouter / Mettre à jour un véhicule manuellement -------------
-  const handleManualSubmit = () => {
-    setError(null);
-    const { marque, modele, annee } = manualVehicle;
-    if (!marque || !modele || !annee) {
-      setError('Tous les champs sont obligatoires.');
+    if (!payload.marque || !payload.modele || !payload.annee) {
+      setError('La marque, le modele et l annee sont obligatoires.');
       return;
     }
 
-    if (editVehicle) {
-      // On fait un PUT pour mettre à jour
-      const updatedData = { ...editVehicle, ...manualVehicle };
+    try {
+      setLoading(true);
 
-      updateVehiculeRequest(editVehicle.id, updatedData)
-        .then((data) => {
-          setVehicles((current) =>
-            current.map((vehicle) => (vehicle.id === data.id ? data : vehicle))
-          );
-
-          // Reset
-          setEditVehicle(null);
-          setManualVehicle({ marque: '', modele: '', annee: '' });
-        })
-        .catch((err) => {
-          console.error(err);
-          setError('Impossible de mettre à jour ce véhicule.');
+      if (editVehicle) {
+        const updated = await updateVehiculeRequest(editVehicle.id, {
+          ...editVehicle,
+          ...payload,
         });
-    } else {
-      // POST pour créer un nouveau véhicule
-      const newVehicle = {
-        marque,
-        modele,
-        annee,
-        body_class: 'Non spécifié',
-        vehicle_type: 'Non spécifié'
-      };
+        setVehicles((current) =>
+          current.map((vehicle) => (vehicle.id === updated.id ? updated : vehicle))
+        );
+        setSuccess('Le vehicule a ete mis a jour.');
+      } else {
+        const created = await createVehiculeRequest(payload);
+        setVehicles((current) => [...current, created]);
+        setSuccess('Le vehicule a ete ajoute.');
+      }
 
-      createVehiculeRequest(newVehicle)
-        .then((data) => {
-          setVehicles((current) => [...current, data]);
-          setManualVehicle({ marque: '', modele: '', annee: '' });
-        })
-        .catch((err) => {
-          console.error(err);
-          setError('Impossible de créer ce véhicule.');
-        });
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      setError(editVehicle ? 'Impossible de mettre a jour ce vehicule.' : 'Impossible de creer ce vehicule.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ------------- 5) Supprimer un véhicule -------------
-  const handleDeleteVehicle = (vehId) => {
-    deleteVehiculeRequest(vehId)
-      .then(() => {
-        setVehicles((current) => current.filter((vehicle) => vehicle.id !== vehId));
-      })
-      .catch((err) => {
-        console.error(err);
-        setError('Impossible de supprimer ce véhicule.');
-      });
+  const handleDeleteVehicle = async (vehId) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer ce vehicule ?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+      await deleteVehiculeRequest(vehId);
+      setVehicles((current) => current.filter((vehicle) => vehicle.id !== vehId));
+      setSuccess('Le vehicule a ete supprime.');
+    } catch (err) {
+      console.error(err);
+      setError('Impossible de supprimer ce vehicule.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // ------------- 6) Passer en mode édition -------------
   const handleEditVehicle = (vehicle) => {
     setEditVehicle(vehicle);
+    setVehicleFromVin(null);
+    setVin('');
+    setSuccess(null);
+    setError(null);
     setManualVehicle({
-      marque: vehicle.marque,
-      modele: vehicle.modele,
-      annee: vehicle.annee
+      marque: vehicle.marque || '',
+      modele: vehicle.modele || '',
+      annee: vehicle.annee || '',
+      vin: vehicle.vin || '',
+      body_class: vehicle.body_class || '',
+      vehicle_type: vehicle.vehicle_type || '',
     });
   };
 
-  // ------------- 7) Annuler l’édition -------------
-  const handleCancelEdit = () => {
-    setEditVehicle(null);
-    setManualVehicle({ marque: '', modele: '', annee: '' });
-  };
-
   return (
-    <Container className="mt-5">
-      <h2 className="mb-4">
-        <FontAwesomeIcon icon={faCar} /> Gestion des Véhicules
-      </h2>
+    <Container className="py-4">
+      <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <h2 className="mb-2">
+            <FontAwesomeIcon icon={faCar} className="me-2" />
+            Mes vehicules
+          </h2>
+          <p className="text-muted mb-0">
+            Ajoutez les vehicules que vous utilisez pour vos demandes de rendez-vous.
+          </p>
+        </div>
+        <Badge bg="dark">{vehicles.length} vehicule(s)</Badge>
+      </div>
 
-      {/* Erreur globale */}
       {error && <Alert variant="danger">{error}</Alert>}
+      {success && <Alert variant="success">{success}</Alert>}
+      {loading && (
+        <div className="d-flex align-items-center gap-2 mb-4">
+          <Spinner animation="border" size="sm" />
+          <span>Traitement en cours...</span>
+        </div>
+      )}
 
-      <Row>
-        <Col md={6}>
-          <Card className="mb-4">
-            <Card.Header>
-              {editVehicle
-                ? 'Modifier un véhicule'
-                : 'Ajouter un véhicule (VIN ou manuel)'}
-            </Card.Header>
+      <Row className="g-4 mb-4">
+        <Col xl={5}>
+          <Card className="shadow-sm border-0 h-100">
             <Card.Body>
-              {/* --- Formulaire VIN (uniquement si on n'est pas en mode édition) --- */}
-              {!editVehicle && (
-                <Form>
-                  <Form.Group controlId="formVin">
-                    <Form.Label>Numéro VIN</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Numéro VIN"
-                      value={vin}
-                      onChange={(e) => setVin(e.target.value)}
-                    />
-                  </Form.Group>
-                  <Button variant="primary" onClick={handleVinSubmit} className="mt-2">
-                    Rechercher via NHTSA
-                  </Button>
-                </Form>
-              )}
+              <Card.Title className="mb-3">Ajouter par VIN</Card.Title>
+              <p className="text-muted small">
+                Renseignez un VIN pour pre-remplir automatiquement la marque, le modele et certaines informations techniques.
+              </p>
+              <Form>
+                <Form.Group controlId="formVinLookup" className="mb-3">
+                  <Form.Label>VIN</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Ex.: 1HGCM82633A123456"
+                    value={vin}
+                    onChange={(event) => setVin(event.target.value)}
+                    disabled={Boolean(editVehicle)}
+                  />
+                </Form.Group>
+                <Button variant="primary" onClick={handleVinSubmit} disabled={vinLoading || Boolean(editVehicle)}>
+                  {vinLoading ? 'Recherche...' : 'Rechercher le vehicule'}
+                </Button>
+              </Form>
 
-              {/* --- Affichage du résultat VIN (si existant) --- */}
               {vehicleFromVin && !editVehicle && (
-                <div className="mt-3">
-                  <h5>Résultat VIN :</h5>
-                  <p>
-                    <strong>Marque : </strong> {vehicleFromVin.marque} <br />
-                    <strong>Modèle : </strong> {vehicleFromVin.modele} <br />
-                    <strong>Année : </strong> {vehicleFromVin.annee} <br />
-                    <strong>Type : </strong> {vehicleFromVin.vehicle_type} <br />
-                    <strong>Classe : </strong> {vehicleFromVin.body_class}
-                  </p>
-                  <Button variant="success" onClick={handleAddVehicleFromVin}>
-                    <FontAwesomeIcon icon={faPlus} /> Ajouter ce véhicule
-                  </Button>
-                </div>
+                <Card className="mt-4 border">
+                  <Card.Body>
+                    <Card.Title className="h6">Resultat VIN</Card.Title>
+                    <div className="small mb-1"><strong>Marque :</strong> {vehicleFromVin.marque}</div>
+                    <div className="small mb-1"><strong>Modele :</strong> {vehicleFromVin.modele}</div>
+                    <div className="small mb-1"><strong>Annee :</strong> {vehicleFromVin.annee}</div>
+                    <div className="small mb-1"><strong>VIN :</strong> {vehicleFromVin.vin}</div>
+                    <div className="small mb-1"><strong>Type :</strong> {vehicleFromVin.vehicle_type || 'Non precise'}</div>
+                    <div className="small mb-3"><strong>Classe :</strong> {vehicleFromVin.body_class || 'Non precisee'}</div>
+                    <Button variant="success" onClick={handleAddVehicleFromVin}>
+                      <FontAwesomeIcon icon={faPlus} className="me-2" />
+                      Ajouter ce vehicule
+                    </Button>
+                  </Card.Body>
+                </Card>
               )}
+            </Card.Body>
+          </Card>
+        </Col>
 
-              {/* --- Formulaire manuel ou édition --- */}
-              <Form className="mt-3">
-                <Form.Group controlId="formMarque">
-                  <Form.Label>Marque</Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Marque"
-                    value={manualVehicle.marque}
-                    onChange={(e) =>
-                      setManualVehicle({ ...manualVehicle, marque: e.target.value })
-                    }
-                  />
-                </Form.Group>
-                <Form.Group controlId="formModele">
-                  <Form.Label>Modèle</Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Modèle"
-                    value={manualVehicle.modele}
-                    onChange={(e) =>
-                      setManualVehicle({ ...manualVehicle, modele: e.target.value })
-                    }
-                  />
-                </Form.Group>
-                <Form.Group controlId="formAnnee">
-                  <Form.Label>Année</Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Année"
-                    value={manualVehicle.annee}
-                    onChange={(e) =>
-                      setManualVehicle({ ...manualVehicle, annee: e.target.value })
-                    }
-                  />
-                </Form.Group>
-
-                {editVehicle ? (
-                  <>
-                    <Button
-                      variant="success"
-                      onClick={handleManualSubmit}
-                      className="mt-2 me-2"
-                    >
-                      <FontAwesomeIcon icon={faEdit} /> Mettre à jour
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={handleCancelEdit}
-                      className="mt-2"
-                    >
-                      Annuler
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="success"
-                    onClick={handleManualSubmit}
-                    className="mt-2"
-                  >
-                    <FontAwesomeIcon icon={faPlus} /> Ajouter manuellement
+        <Col xl={7}>
+          <Card className="shadow-sm border-0 h-100">
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <Card.Title className="mb-0">
+                  {editVehicle ? 'Modifier un vehicule' : 'Ajouter manuellement'}
+                </Card.Title>
+                {editVehicle && (
+                  <Button variant="outline-secondary" onClick={resetForm}>
+                    Annuler
                   </Button>
                 )}
-              </Form>
+              </div>
+
+              <Row className="g-3">
+                <Col md={6}>
+                  <Form.Group controlId="formMarque">
+                    <Form.Label>Marque</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={manualVehicle.marque}
+                      onChange={(event) => handleManualChange('marque', event.target.value)}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group controlId="formModele">
+                    <Form.Label>Modele</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={manualVehicle.modele}
+                      onChange={(event) => handleManualChange('modele', event.target.value)}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group controlId="formAnnee">
+                    <Form.Label>Annee</Form.Label>
+                    <Form.Control
+                      type="number"
+                      min="1900"
+                      max="2100"
+                      value={manualVehicle.annee}
+                      onChange={(event) => handleManualChange('annee', event.target.value)}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={8}>
+                  <Form.Group controlId="formVehicleVin">
+                    <Form.Label>VIN ou identifiant</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={manualVehicle.vin}
+                      onChange={(event) => handleManualChange('vin', event.target.value)}
+                      placeholder="Optionnel"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group controlId="formVehicleType">
+                    <Form.Label>Type de vehicule</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={manualVehicle.vehicle_type}
+                      onChange={(event) => handleManualChange('vehicle_type', event.target.value)}
+                      placeholder="Ex.: SUV, berline, camion"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group controlId="formBodyClass">
+                    <Form.Label>Classe de carrosserie</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={manualVehicle.body_class}
+                      onChange={(event) => handleManualChange('body_class', event.target.value)}
+                      placeholder="Optionnel"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <div className="mt-4">
+                <Button variant="success" onClick={handleManualSubmit}>
+                  <FontAwesomeIcon icon={editVehicle ? faEdit : faPlus} className="me-2" />
+                  {editVehicle ? 'Enregistrer les modifications' : 'Ajouter le vehicule'}
+                </Button>
+              </div>
             </Card.Body>
           </Card>
         </Col>
       </Row>
 
-      {/* --- Liste des véhicules existants --- */}
-      <Card>
-        <Card.Header>Liste des véhicules</Card.Header>
-        <ListGroup variant="flush">
-          {vehicles.map((vehicle) => (
-            <ListGroup.Item key={vehicle.id}>
-              <Row>
-                <Col md={8}>
-                  <strong>
-                    {vehicle.marque} {vehicle.modele} ({vehicle.annee})
-                  </strong>
-                  <p>
-                    Type:&nbsp;{vehicle.vehicle_type || 'N/A'} 
-                    {' - '} 
-                    Classe:&nbsp;{vehicle.body_class || 'N/A'}
-                  </p>
-                </Col>
-                <Col
-                  md={4}
-                  className="text-right d-flex align-items-center justify-content-end"
-                >
-                  <Button
-                    variant="warning"
-                    onClick={() => handleEditVehicle(vehicle)}
-                    className="me-2"
-                  >
-                    <FontAwesomeIcon icon={faEdit} /> Modifier
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleDeleteVehicle(vehicle.id)}
-                  >
-                    <FontAwesomeIcon icon={faTrash} /> Supprimer
-                  </Button>
-                </Col>
-              </Row>
-            </ListGroup.Item>
-          ))}
-        </ListGroup>
+      <Card className="shadow-sm border-0">
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <Card.Title className="mb-0">Ma flotte personnelle</Card.Title>
+            <span className="text-muted small">{vehicles.length} element(s)</span>
+          </div>
+
+          {vehicles.length === 0 ? (
+            <Alert variant="light" className="mb-0">
+              Aucun vehicule enregistre pour le moment.
+            </Alert>
+          ) : (
+            <ListGroup variant="flush">
+              {vehicles.map((vehicle) => (
+                <ListGroup.Item key={vehicle.id} className="px-0 py-3">
+                  <Row className="align-items-center g-3">
+                    <Col lg={8}>
+                      <div className="fw-semibold">
+                        {vehicle.marque} {vehicle.modele} ({vehicle.annee})
+                      </div>
+                      <div className="small text-muted mt-1">
+                        VIN : {vehicle.vin || 'Non renseigne'} | Type : {vehicle.vehicle_type || 'Non precise'} | Classe : {vehicle.body_class || 'Non precisee'}
+                      </div>
+                    </Col>
+                    <Col lg={4} className="d-flex justify-content-lg-end gap-2">
+                      <Button variant="outline-warning" onClick={() => handleEditVehicle(vehicle)}>
+                        <FontAwesomeIcon icon={faEdit} className="me-2" />
+                        Modifier
+                      </Button>
+                      <Button variant="outline-danger" onClick={() => handleDeleteVehicle(vehicle.id)}>
+                        <FontAwesomeIcon icon={faTrash} className="me-2" />
+                        Supprimer
+                      </Button>
+                    </Col>
+                  </Row>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          )}
+        </Card.Body>
       </Card>
     </Container>
   );

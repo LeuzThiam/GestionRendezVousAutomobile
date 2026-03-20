@@ -46,10 +46,15 @@ class PublicGarageListView(generics.ListAPIView):
         queryset = Garage.objects.filter(is_active=True)
         search = self.request.query_params.get('q', '').strip()
         if search:
-            queryset = queryset.filter(name__icontains=search)
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(address__icontains=search)
+                | Q(slug__icontains=search)
+                | Q(services__nom__icontains=search, services__actif=True)
+            )
         return queryset.annotate(
             mecaniciens_count=Count('profiles', filter=Q(profiles__role='mecanicien'))
-        )
+        ).distinct()
 
 
 class GarageServiceListCreateView(generics.ListCreateAPIView):

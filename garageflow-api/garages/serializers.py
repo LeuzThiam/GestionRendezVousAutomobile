@@ -59,10 +59,27 @@ class PublicGarageSerializer(serializers.ModelSerializer):
 
 class PublicGarageListSerializer(serializers.ModelSerializer):
     mecaniciens_count = serializers.IntegerField(read_only=True)
+    services = serializers.SerializerMethodField()
+    disponibilites_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Garage
-        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens_count']
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'phone',
+            'address',
+            'mecaniciens_count',
+            'services',
+            'disponibilites_count',
+        ]
+
+    def get_services(self, obj):
+        return list(obj.services.filter(actif=True).values_list('nom', flat=True))
+
+    def get_disponibilites_count(self, obj):
+        return obj.disponibilites.filter(actif=True).count()
 
 
 class PublicServiceOffertSerializer(serializers.ModelSerializer):
