@@ -20,6 +20,7 @@ class GarageApiTests(APITestCase):
                 'password2': 'testpass123',
                 'phone': '5140000000',
                 'address': '123 Rue du Test',
+                'description': 'Garage automobile specialise en entretien general.',
             },
             format='json',
         )
@@ -29,6 +30,7 @@ class GarageApiTests(APITestCase):
         self.assertEqual(garage.owner.username, 'owner1')
         self.assertEqual(garage.owner.profile.role, 'owner')
         self.assertEqual(garage.owner.profile.garage, garage)
+        self.assertEqual(garage.description, 'Garage automobile specialise en entretien general.')
 
     def test_current_garage_returns_authenticated_garage(self):
         owner = User.objects.create_user(
@@ -56,7 +58,12 @@ class GarageApiTests(APITestCase):
             email='owner3@example.com',
             password='testpass123',
         )
-        garage = Garage.objects.create(name='Garage Public', slug='garage-public', owner=owner)
+        garage = Garage.objects.create(
+            name='Garage Public',
+            slug='garage-public',
+            owner=owner,
+            description='Garage de quartier pour entretien et diagnostics.',
+        )
         owner.profile.role = 'owner'
         owner.profile.garage = garage
         owner.profile.save()
@@ -89,6 +96,7 @@ class GarageApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Garage Public')
+        self.assertEqual(response.data['description'], 'Garage de quartier pour entretien et diagnostics.')
         self.assertEqual(len(response.data['mecaniciens']), 1)
         self.assertEqual(response.data['mecaniciens'][0]['first_name'], 'Jean')
         self.assertEqual(len(response.data['services']), 1)
@@ -124,6 +132,7 @@ class GarageApiTests(APITestCase):
             slug='garage-filtre',
             owner=owner,
             address='Quebec',
+            description='Specialiste climatisation et entretien.',
         )
         owner.profile.role = 'owner'
         owner.profile.garage = garage
@@ -141,6 +150,7 @@ class GarageApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['slug'], 'garage-filtre')
         self.assertIn('Climatisation', response.data[0]['services'])
+        self.assertEqual(response.data[0]['description'], 'Specialiste climatisation et entretien.')
 
     def test_owner_can_create_service_for_garage(self):
         owner = User.objects.create_user(username='owner-service', password='testpass123')

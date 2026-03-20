@@ -189,8 +189,8 @@ function DashboardGarage() {
                     <span>{currentGarage?.phone || 'Telephone a renseigner'}</span>
                   </div>
                   <p className="dashboard-hero-text mb-0">
-                    Une vue operationnelle pour suivre l equipe, les rendez-vous et la reservation
-                    publique sans naviguer entre plusieurs ecrans.
+                    {currentGarage?.description
+                      || 'Une vue operationnelle pour suivre l equipe, les rendez-vous et la reservation publique sans naviguer entre plusieurs ecrans.'}
                   </p>
                 </div>
 

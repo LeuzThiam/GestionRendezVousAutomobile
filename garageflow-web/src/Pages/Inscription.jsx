@@ -14,6 +14,7 @@ const initialValues = {
   garage_slug: '',
   phone: '',
   address: '',
+  description: '',
   username: '',
   first_name: '',
   last_name: '',
@@ -111,6 +112,7 @@ function Inscription() {
                       garage_slug: values.garage_slug,
                       phone: values.phone,
                       address: values.address,
+                      description: values.description,
                       username: values.username,
                       first_name: values.first_name,
                       last_name: values.last_name,
@@ -226,6 +228,19 @@ function Inscription() {
                             name="address"
                             placeholder="123 Rue du Test, Montreal"
                             value={values.address}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                          />
+                        </Form.Group>
+
+                        <Form.Group controlId="formGarageDescription" className="mb-3">
+                          <Form.Label>Description du garage</Form.Label>
+                          <Form.Control
+                            as="textarea"
+                            rows={3}
+                            name="description"
+                            placeholder="Presentez votre garage, vos specialites ou votre approche client"
+                            value={values.description}
                             onChange={handleChange}
                             onBlur={handleBlur}
                           />

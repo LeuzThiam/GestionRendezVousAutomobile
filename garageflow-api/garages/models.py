@@ -13,6 +13,7 @@ class Garage(models.Model):
     )
     phone = models.CharField(max_length=30, blank=True)
     address = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

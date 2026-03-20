@@ -59,6 +59,7 @@ function RendezVous() {
         garage.address,
         garage.slug,
         garage.phone,
+        garage.description,
         ...(garage.services || []),
       ]
         .filter(Boolean)
@@ -164,6 +165,9 @@ function RendezVous() {
                 </Card.Text>
                 <Card.Text className="mb-3">
                   <strong>Telephone :</strong> {garage.phone || 'A renseigner'}
+                </Card.Text>
+                <Card.Text className="text-muted small mb-3">
+                  {garage.description || 'Description du garage non renseignee.'}
                 </Card.Text>
 
                 <div className="mb-3">

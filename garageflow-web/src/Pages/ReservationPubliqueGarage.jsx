@@ -176,6 +176,12 @@ function ReservationPubliqueGarage() {
                       <strong>Slug public :</strong> {garage.slug}
                     </div>
                   </div>
+                  {garage.description && (
+                    <div className="mt-3">
+                      <strong>Description :</strong>
+                      <p className="text-muted mb-0 mt-2">{garage.description}</p>
+                    </div>
+                  )}
                 </Col>
                 <Col lg={4}>
                   <Row className="g-3">
@@ -204,7 +210,7 @@ function ReservationPubliqueGarage() {
                 <div className="mb-4">
                   <h5 className="mb-3">Resume</h5>
                   <p className="text-muted mb-2">
-                    Ce garage recoit vos demandes de rendez-vous en ligne et organise ensuite l'intervention en interne.
+                    {garage.description || "Ce garage recoit vos demandes de rendez-vous en ligne et organise ensuite l'intervention en interne."}
                   </p>
                   <p className="text-muted mb-0">
                     Vous choisissez un service, un vehicule et un creneau souhaite. Le garage confirme ensuite la prise en charge.

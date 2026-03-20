@@ -23,6 +23,7 @@ class GarageSerializer(serializers.ModelSerializer):
             'slug',
             'phone',
             'address',
+            'description',
             'is_active',
             'owner_id',
             'owner_username',
@@ -38,7 +39,7 @@ class PublicGarageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Garage
-        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens', 'services', 'disponibilites']
+        fields = ['id', 'name', 'slug', 'phone', 'address', 'description', 'mecaniciens', 'services', 'disponibilites']
 
     def get_mecaniciens(self, obj):
         mecaniciens = User.objects.filter(profile__role='mecanicien', profile__garage=obj).values(
@@ -70,6 +71,7 @@ class PublicGarageListSerializer(serializers.ModelSerializer):
             'slug',
             'phone',
             'address',
+            'description',
             'mecaniciens_count',
             'services',
             'disponibilites_count',
@@ -109,6 +111,7 @@ class GarageRegistrationSerializer(serializers.Serializer):
     garage_slug = serializers.SlugField(max_length=160, required=False, allow_blank=True)
     phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    description = serializers.CharField(required=False, allow_blank=True)
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=150)
@@ -135,6 +138,7 @@ class GarageRegistrationSerializer(serializers.Serializer):
         garage_slug = validated_data.pop('garage_slug', '')
         phone = validated_data.pop('phone', '')
         address = validated_data.pop('address', '')
+        description = validated_data.pop('description', '')
         password = validated_data.pop('password')
         validated_data.pop('password2')
 
@@ -148,6 +152,7 @@ class GarageRegistrationSerializer(serializers.Serializer):
             owner=user,
             phone=phone,
             address=address,
+            description=description,
         )
 
         profile = user.profile

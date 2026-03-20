@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { fetchCurrentUserRequest, logoutRequest } from '../../api/auth';
 import { fetchCurrentGarageRequest } from '../../api/garages';
@@ -24,16 +24,16 @@ export function AuthProvider({ children }) {
   const hasToken = Boolean(localStorage.getItem('token'));
   const isAuthenticated = Boolean(user && hasToken);
 
-  const persistUser = (nextUser) => {
+  const persistUser = useCallback((nextUser) => {
     setUser(nextUser);
     if (nextUser) {
       localStorage.setItem('user', JSON.stringify(nextUser));
     } else {
       localStorage.removeItem('user');
     }
-  };
+  }, []);
 
-  const login = (nextUser, tokens = {}) => {
+  const login = useCallback((nextUser, tokens = {}) => {
     if (tokens.access) {
       localStorage.setItem('token', tokens.access);
     }
@@ -42,18 +42,18 @@ export function AuthProvider({ children }) {
     }
     persistUser(nextUser);
     setError(null);
-  };
+  }, [persistUser]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     logoutRequest().catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');
     persistUser(null);
     setCurrentGarage(null);
     setError(null);
-  };
+  }, [persistUser]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -69,9 +69,9 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout, persistUser]);
 
-  const refreshCurrentGarage = async () => {
+  const refreshCurrentGarage = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -88,9 +88,9 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout]);
 
-  const updateUser = async (payload) => {
+  const updateUser = useCallback(async (payload) => {
     try {
       setLoading(true);
       setError(null);
@@ -106,13 +106,13 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout, persistUser]);
 
   useEffect(() => {
     if (hasToken && !user) {
       refreshUser().catch(() => {});
     }
-  }, [hasToken, user]);
+  }, [hasToken, user, refreshUser]);
 
   const value = useMemo(
     () => ({
@@ -128,7 +128,7 @@ export function AuthProvider({ children }) {
       updateUser,
       setError,
     }),
-    [user, currentGarage, isAuthenticated, loading, error]
+    [user, currentGarage, isAuthenticated, loading, error, login, logout, refreshUser, refreshCurrentGarage, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
