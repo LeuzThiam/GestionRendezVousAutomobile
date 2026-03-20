@@ -3,7 +3,7 @@ from decimal import Decimal
 from rest_framework import serializers
 from django.utils.text import slugify
 
-from .models import Garage, ServiceOffert, DisponibiliteGarage
+from .models import Garage, ServiceOffert, DisponibiliteGarage, FermetureExceptionnelleGarage
 
 
 class PublicMecanicienSerializer(serializers.Serializer):
@@ -37,10 +37,11 @@ class PublicGarageSerializer(serializers.ModelSerializer):
     mecaniciens = serializers.SerializerMethodField()
     services = serializers.SerializerMethodField()
     disponibilites = serializers.SerializerMethodField()
+    fermetures_exceptionnelles = serializers.SerializerMethodField()
 
     class Meta:
         model = Garage
-        fields = ['id', 'name', 'slug', 'phone', 'address', 'description', 'mecaniciens', 'services', 'disponibilites']
+        fields = ['id', 'name', 'slug', 'phone', 'address', 'description', 'mecaniciens', 'services', 'disponibilites', 'fermetures_exceptionnelles']
 
     def get_mecaniciens(self, obj):
         mecaniciens = User.objects.filter(profile__role='mecanicien', profile__garage=obj).values(
@@ -57,6 +58,10 @@ class PublicGarageSerializer(serializers.ModelSerializer):
     def get_disponibilites(self, obj):
         disponibilites = obj.disponibilites.filter(actif=True)
         return DisponibiliteGarageSerializer(disponibilites, many=True).data
+
+    def get_fermetures_exceptionnelles(self, obj):
+        fermetures = obj.fermetures_exceptionnelles.filter(actif=True)
+        return FermetureExceptionnelleGarageSerializer(fermetures, many=True).data
 
 
 class PublicGarageListSerializer(serializers.ModelSerializer):
@@ -147,6 +152,85 @@ class DisponibiliteGarageSerializer(serializers.ModelSerializer):
         model = DisponibiliteGarage
         fields = ['id', 'jour_semaine', 'jour_label', 'heure_debut', 'heure_fin', 'actif']
         read_only_fields = ['id', 'jour_label']
+
+    def validate(self, attrs):
+        instance = getattr(self, 'instance', None)
+        jour_semaine = attrs.get('jour_semaine', getattr(instance, 'jour_semaine', None))
+        heure_debut = attrs.get('heure_debut', getattr(instance, 'heure_debut', None))
+        heure_fin = attrs.get('heure_fin', getattr(instance, 'heure_fin', None))
+        actif = attrs.get('actif', getattr(instance, 'actif', True))
+
+        if heure_debut is None or heure_fin is None:
+            raise serializers.ValidationError("Les heures de debut et de fin sont requises.")
+        if heure_fin <= heure_debut:
+            raise serializers.ValidationError({'heure_fin': "L'heure de fin doit etre apres l'heure de debut."})
+
+        request = self.context.get('request')
+        current_garage = getattr(getattr(getattr(request, 'user', None), 'profile', None), 'garage', None)
+        if current_garage is not None and actif:
+            queryset = DisponibiliteGarage.objects.filter(
+                garage=current_garage,
+                jour_semaine=jour_semaine,
+                actif=True,
+            )
+            if instance is not None:
+                queryset = queryset.exclude(pk=instance.pk)
+            overlap = queryset.filter(
+                heure_debut__lt=heure_fin,
+                heure_fin__gt=heure_debut,
+            ).exists()
+            if overlap:
+                raise serializers.ValidationError("Ce creneau chevauche deja une autre disponibilite active du meme jour.")
+
+        return attrs
+
+
+class FermetureExceptionnelleGarageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FermetureExceptionnelleGarage
+        fields = ['id', 'date', 'toute_la_journee', 'heure_debut', 'heure_fin', 'raison', 'actif']
+        read_only_fields = ['id']
+
+    def validate(self, attrs):
+        instance = getattr(self, 'instance', None)
+        date = attrs.get('date', getattr(instance, 'date', None))
+        toute_la_journee = attrs.get('toute_la_journee', getattr(instance, 'toute_la_journee', True))
+        heure_debut = attrs.get('heure_debut', getattr(instance, 'heure_debut', None))
+        heure_fin = attrs.get('heure_fin', getattr(instance, 'heure_fin', None))
+        actif = attrs.get('actif', getattr(instance, 'actif', True))
+
+        if not toute_la_journee:
+            if heure_debut is None or heure_fin is None:
+                raise serializers.ValidationError("Une fermeture partielle doit definir une heure de debut et une heure de fin.")
+            if heure_fin <= heure_debut:
+                raise serializers.ValidationError({'heure_fin': "L'heure de fin doit etre apres l'heure de debut."})
+        else:
+            attrs['heure_debut'] = None
+            attrs['heure_fin'] = None
+
+        request = self.context.get('request')
+        current_garage = getattr(getattr(getattr(request, 'user', None), 'profile', None), 'garage', None)
+        if current_garage is not None and actif:
+            queryset = FermetureExceptionnelleGarage.objects.filter(
+                garage=current_garage,
+                date=date,
+                actif=True,
+            )
+            if instance is not None:
+                queryset = queryset.exclude(pk=instance.pk)
+            if toute_la_journee and queryset.exists():
+                raise serializers.ValidationError("Une fermeture toute la journee existe deja pour cette date.")
+            if queryset.filter(toute_la_journee=True).exists():
+                raise serializers.ValidationError("Cette date est deja fermee toute la journee.")
+            if not toute_la_journee:
+                overlap = queryset.filter(
+                    heure_debut__lt=heure_fin,
+                    heure_fin__gt=heure_debut,
+                ).exists()
+                if overlap:
+                    raise serializers.ValidationError("Cette fermeture exceptionnelle chevauche deja un autre bloc.")
+
+        return attrs
 
 
 class GarageRegistrationSerializer(serializers.Serializer):

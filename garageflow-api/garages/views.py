@@ -3,13 +3,14 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import DisponibiliteGarage, Garage, ServiceOffert
+from .models import DisponibiliteGarage, FermetureExceptionnelleGarage, Garage, ServiceOffert
 from .serializers import (
     GarageRegistrationSerializer,
     GarageSerializer,
     PublicGarageListSerializer,
     PublicGarageSerializer,
     DisponibiliteGarageSerializer,
+    FermetureExceptionnelleGarageSerializer,
     ServiceOffertSerializer,
 )
 
@@ -100,3 +101,25 @@ class GarageDisponibiliteDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         garage = getattr(self.request.user.profile, 'garage', None)
         return DisponibiliteGarage.objects.filter(garage=garage)
+
+
+class GarageFermetureExceptionnelleListCreateView(generics.ListCreateAPIView):
+    serializer_class = FermetureExceptionnelleGarageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        garage = getattr(self.request.user.profile, 'garage', None)
+        return FermetureExceptionnelleGarage.objects.filter(garage=garage)
+
+    def perform_create(self, serializer):
+        garage = getattr(self.request.user.profile, 'garage', None)
+        serializer.save(garage=garage)
+
+
+class GarageFermetureExceptionnelleDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = FermetureExceptionnelleGarageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        garage = getattr(self.request.user.profile, 'garage', None)
+        return FermetureExceptionnelleGarage.objects.filter(garage=garage)

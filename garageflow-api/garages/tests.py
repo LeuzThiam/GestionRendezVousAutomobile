@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from garages.models import DisponibiliteGarage, Garage, ServiceOffert
+from garages.models import DisponibiliteGarage, FermetureExceptionnelleGarage, Garage, ServiceOffert
 
 
 class GarageApiTests(APITestCase):
@@ -277,3 +277,57 @@ class GarageApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(DisponibiliteGarage.objects.filter(garage=garage).count(), 1)
+
+    def test_owner_cannot_create_overlapping_disponibilite_for_same_day(self):
+        owner = User.objects.create_user(username='owner-overlap', password='testpass123')
+        garage = Garage.objects.create(name='Garage Overlap', slug='garage-overlap', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+        DisponibiliteGarage.objects.create(
+            garage=garage,
+            jour_semaine=1,
+            heure_debut='09:00',
+            heure_fin='12:00',
+            actif=True,
+        )
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/garages/me/disponibilites/',
+            {
+                'jour_semaine': 1,
+                'heure_debut': '11:00',
+                'heure_fin': '13:00',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_owner_can_create_fermeture_exceptionnelle(self):
+        owner = User.objects.create_user(username='owner-close', password='testpass123')
+        garage = Garage.objects.create(name='Garage Close', slug='garage-close', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/garages/me/fermetures/',
+            {
+                'date': '2026-12-25',
+                'toute_la_journee': True,
+                'raison': 'Noel',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(FermetureExceptionnelleGarage.objects.filter(garage=garage).count(), 1)
