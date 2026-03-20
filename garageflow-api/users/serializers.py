@@ -395,8 +395,27 @@ class MecanicienDisponibiliteSerializer(serializers.ModelSerializer):
 
         heure_debut = attrs.get('heure_debut', getattr(self.instance, 'heure_debut', None))
         heure_fin = attrs.get('heure_fin', getattr(self.instance, 'heure_fin', None))
+        jour_semaine = attrs.get('jour_semaine', getattr(self.instance, 'jour_semaine', None))
+        actif = attrs.get('actif', getattr(self.instance, 'actif', True))
         if heure_debut and heure_fin and heure_debut >= heure_fin:
             raise serializers.ValidationError({'heure_fin': "L'heure de fin doit etre apres l'heure de debut."})
+
+        if actif and mecanicien and jour_semaine is not None and heure_debut and heure_fin:
+            queryset = MecanicienDisponibilite.objects.filter(
+                mecanicien=mecanicien,
+                jour_semaine=jour_semaine,
+                actif=True,
+            )
+            if self.instance is not None:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            overlap = queryset.filter(
+                heure_debut__lt=heure_fin,
+                heure_fin__gt=heure_debut,
+            ).exists()
+            if overlap:
+                raise serializers.ValidationError(
+                    "Ce creneau chevauche deja une autre disponibilite active de ce mecanicien."
+                )
 
         return attrs
 

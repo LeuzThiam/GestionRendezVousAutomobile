@@ -2,7 +2,20 @@ from .models import RendezVous
 
 
 def get_rendezvous_queryset_for_user(user):
-    queryset = RendezVous.objects.all()
+    queryset = RendezVous.objects.select_related(
+        'garage',
+        'client',
+        'mecanicien',
+        'vehicule',
+        'service',
+        'confirmed_by',
+        'rejected_by',
+        'reprogrammed_by',
+    ).prefetch_related(
+        'reprogrammation_propositions',
+        'reprogrammation_propositions__created_by',
+        'reprogrammation_propositions__responded_by',
+    )
     profile = getattr(user, 'profile', None)
     role = getattr(profile, 'role', None)
     garage = getattr(profile, 'garage', None)

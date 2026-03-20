@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from garages.models import DisponibiliteGarage, Garage, ServiceOffert
-from rendez_vous.models import RendezVous
+from rendez_vous.models import RendezVous, ReprogrammationProposition
 from users.models import MecanicienDisponibilite
 from vehicules.models import Vehicule
 
@@ -276,6 +276,11 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(rdv.status, 'modification_requested')
         self.assert_same_minute(rdv.date, initial_date)
         self.assert_same_minute(rdv.requested_date, requested_date)
+        proposal = rdv.reprogrammation_propositions.get()
+        self.assertEqual(proposal.proposal_type, 'client_request')
+        self.assertEqual(proposal.response_status, 'pending')
+        self.assert_same_minute(proposal.proposed_date, requested_date)
+        self.assertEqual(proposal.created_by, self.client_user)
 
     def test_mecanicien_must_provide_quote_and_duration_when_confirming(self):
         rdv = RendezVous.objects.create(
@@ -344,6 +349,8 @@ class RendezVousApiTests(APITestCase):
         rdv.refresh_from_db()
         self.assertEqual(rdv.status, 'confirmed')
         self.assertEqual(rdv.mecanicien, self.mecanicien)
+        self.assertEqual(rdv.confirmed_by, self.garage.owner)
+        self.assertIsNotNone(rdv.confirmed_at)
 
     def test_owner_can_confirm_with_new_date(self):
         initial_date = self.build_local_datetime(days=2, hour=10)
@@ -374,6 +381,8 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(rdv.mecanicien, self.mecanicien)
         self.assertEqual(rdv.status, 'confirmed')
         self.assert_same_minute(rdv.date, updated_date)
+        self.assertEqual(rdv.reprogrammed_by, self.garage.owner)
+        self.assertIsNotNone(rdv.reprogrammed_at)
 
     def test_owner_can_accept_requested_date_without_resending_date(self):
         initial_date = self.build_local_datetime(days=2, hour=10)
@@ -387,6 +396,12 @@ class RendezVousApiTests(APITestCase):
             requested_date=requested_date,
             status='modification_requested',
             description='Reprogrammation propre',
+        )
+        ReprogrammationProposition.objects.create(
+            rendez_vous=rdv,
+            proposed_date=requested_date,
+            proposal_type='client_request',
+            created_by=self.client_user,
         )
         self.authenticate(self.garage.owner)
 
@@ -406,6 +421,80 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(rdv.status, 'confirmed')
         self.assert_same_minute(rdv.date, requested_date)
         self.assertIsNone(rdv.requested_date)
+        proposal = rdv.reprogrammation_propositions.get(proposal_type='client_request')
+        self.assertEqual(proposal.response_status, 'accepted')
+        self.assertEqual(proposal.responded_by, self.garage.owner)
+        self.assertIsNotNone(proposal.responded_at)
+
+    def test_owner_counter_proposal_is_recorded_in_history_with_internal_note(self):
+        initial_date = self.build_local_datetime(days=2, hour=10)
+        requested_date = self.build_local_datetime(days=5, hour=11)
+        counter_date = self.build_local_datetime(days=6, hour=9)
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=initial_date,
+            requested_date=requested_date,
+            status='modification_requested',
+            description='Reprogrammation avec contre-proposition',
+        )
+        client_proposal = ReprogrammationProposition.objects.create(
+            rendez_vous=rdv,
+            proposed_date=requested_date,
+            proposal_type='client_request',
+            created_by=self.client_user,
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '1.50',
+                'quote': '130.00',
+                'date': counter_date.isoformat(),
+                'garage_internal_note': 'Le creneau client n etait pas tenable pour l atelier.',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rdv.refresh_from_db()
+        client_proposal.refresh_from_db()
+        self.assertEqual(client_proposal.response_status, 'rejected')
+        garage_counter = rdv.reprogrammation_propositions.get(proposal_type='garage_counter')
+        self.assertEqual(garage_counter.response_status, 'accepted')
+        self.assertEqual(garage_counter.internal_note, 'Le creneau client n etait pas tenable pour l atelier.')
+        self.assert_same_minute(garage_counter.proposed_date, counter_date)
+
+    def test_client_response_does_not_expose_internal_notes(self):
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=self.build_local_datetime(days=2, hour=10),
+            description='Masquer la note interne',
+        )
+        ReprogrammationProposition.objects.create(
+            rendez_vous=rdv,
+            proposed_date=self.build_local_datetime(days=4, hour=14),
+            proposal_type='garage_counter',
+            created_by=self.garage.owner,
+            internal_note='Ne pas exposer au client',
+            response_status='accepted',
+            responded_at=timezone.now(),
+            responded_by=self.garage.owner,
+        )
+        self.authenticate(self.client_user)
+
+        response = self.client.get(f'/api/rendezvous/{rdv.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('internal_note', response.data['reschedule_history'][0])
 
     def test_owner_cannot_confirm_without_mecanicien(self):
         rdv = RendezVous.objects.create(
@@ -545,6 +634,27 @@ class RendezVousApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('reason', response.data)
+
+    def test_owner_reject_tracks_decision_history(self):
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            date=self.build_local_datetime(days=2, hour=10),
+            description='Demande a refuser',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {'status': 'rejected', 'reason': 'Atelier complet'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rdv.refresh_from_db()
+        self.assertEqual(rdv.rejected_by, self.garage.owner)
+        self.assertIsNotNone(rdv.rejected_at)
 
     def test_queryset_is_filtered_for_client(self):
         own_rdv = RendezVous.objects.create(

@@ -17,6 +17,27 @@ const JOURS = [
   { value: 6, label: 'Dimanche' },
 ];
 
+const initialRepeatDays = {
+  0: false,
+  1: false,
+  2: false,
+  3: false,
+  4: false,
+  5: false,
+  6: false,
+};
+
+function formatError(requestError, fallback) {
+  const payload = requestError?.response?.data ?? requestError;
+  if (typeof payload === 'string') {
+    return payload;
+  }
+  if (payload && typeof payload === 'object') {
+    return Object.values(payload).flat().join(' ');
+  }
+  return fallback;
+}
+
 function GestionDisponibilitesMecaniciensGarage() {
   const [mecaniciens, setMecaniciens] = useState([]);
   const [disponibilites, setDisponibilites] = useState([]);
@@ -28,6 +49,7 @@ function GestionDisponibilitesMecaniciensGarage() {
     heure_fin: '17:00',
     actif: true,
   });
+  const [repeatDays, setRepeatDays] = useState(initialRepeatDays);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
@@ -43,14 +65,7 @@ function GestionDisponibilitesMecaniciensGarage() {
       setMecaniciens(mecaniciensData);
       setDisponibilites(disponibilitesData);
     } catch (requestError) {
-      const payload = requestError.response?.data;
-      if (typeof payload === 'string') {
-        setError(payload);
-      } else if (payload && typeof payload === 'object') {
-        setError(Object.values(payload).flat().join(' '));
-      } else {
-        setError("Impossible de charger les disponibilites des mecaniciens.");
-      }
+      setError(formatError(requestError, "Impossible de charger les disponibilites des mecaniciens."));
     } finally {
       setLoading(false);
     }
@@ -63,40 +78,67 @@ function GestionDisponibilitesMecaniciensGarage() {
   const groupedDisponibilites = useMemo(() => {
     return mecaniciens.map((mecanicien) => ({
       mecanicien,
-      disponibilites: disponibilites.filter((item) => item.mecanicien === mecanicien.id),
+      disponibilites: disponibilites
+        .filter((item) => item.mecanicien === mecanicien.id)
+        .sort((left, right) => {
+          if (left.jour_semaine !== right.jour_semaine) {
+            return left.jour_semaine - right.jour_semaine;
+          }
+          return left.heure_debut.localeCompare(right.heure_debut);
+        }),
     }));
   }, [disponibilites, mecaniciens]);
 
+  const mecaniciensNonConfigures = useMemo(() => (
+    groupedDisponibilites.filter(({ disponibilites: items }) => items.length === 0)
+  ), [groupedDisponibilites]);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!formData.mecanicien) {
+      setError('Selectionnez un mecanicien.');
+      return;
+    }
+    if (formData.heure_fin <= formData.heure_debut) {
+      setError("L'heure de fin doit etre apres l'heure de debut.");
+      return;
+    }
+
+    const selectedRepeatDays = Object.entries(repeatDays)
+      .filter(([, checked]) => checked)
+      .map(([value]) => Number(value));
+    const targetDays = Array.from(new Set([Number(formData.jour_semaine), ...selectedRepeatDays]));
+
     try {
       setLoading(true);
       setError(null);
       setMessage(null);
-      await createMecanicienDisponibiliteRequest({
-        mecanicien: Number(formData.mecanicien),
-        jour_semaine: Number(formData.jour_semaine),
-        heure_debut: formData.heure_debut,
-        heure_fin: formData.heure_fin,
-        actif: formData.actif,
-      });
-      setMessage('Disponibilite mecanicien ajoutee.');
+
+      await Promise.all(targetDays.map((day) => (
+        createMecanicienDisponibiliteRequest({
+          mecanicien: Number(formData.mecanicien),
+          jour_semaine: day,
+          heure_debut: formData.heure_debut,
+          heure_fin: formData.heure_fin,
+          actif: formData.actif,
+        })
+      )));
+
+      setMessage(
+        targetDays.length > 1
+          ? `Disponibilites ajoutees sur ${targetDays.length} jour(s).`
+          : 'Disponibilite mecanicien ajoutee.'
+      );
       setFormData((current) => ({
         ...current,
         jour_semaine: '0',
         heure_debut: '08:00',
         heure_fin: '17:00',
       }));
+      setRepeatDays(initialRepeatDays);
       await loadData(selectedMecanicien);
     } catch (requestError) {
-      const payload = requestError.response?.data;
-      if (typeof payload === 'string') {
-        setError(payload);
-      } else if (payload && typeof payload === 'object') {
-        setError(Object.values(payload).flat().join(' '));
-      } else {
-        setError("Impossible d'ajouter cette disponibilite.");
-      }
+      setError(formatError(requestError, "Impossible d'ajouter cette disponibilite."));
     } finally {
       setLoading(false);
     }
@@ -111,14 +153,7 @@ function GestionDisponibilitesMecaniciensGarage() {
       setMessage('Disponibilite supprimee.');
       await loadData(selectedMecanicien);
     } catch (requestError) {
-      const payload = requestError.response?.data;
-      if (typeof payload === 'string') {
-        setError(payload);
-      } else if (payload && typeof payload === 'object') {
-        setError(Object.values(payload).flat().join(' '));
-      } else {
-        setError("Impossible de supprimer cette disponibilite.");
-      }
+      setError(formatError(requestError, "Impossible de supprimer cette disponibilite."));
     } finally {
       setLoading(false);
     }
@@ -136,10 +171,15 @@ function GestionDisponibilitesMecaniciensGarage() {
         <div>
           <h1 className="mb-2">Disponibilites des mecaniciens</h1>
           <p className="text-muted mb-0">
-            Definissez les plages horaires internes de votre equipe pour mieux organiser le planning.
+            Definissez plusieurs creneaux internes, dupliquez-les rapidement sur la semaine et reperez les mecaniciens encore non configures.
           </p>
         </div>
-        <Badge bg="dark">{disponibilites.length} disponibilite(s)</Badge>
+        <div className="d-flex gap-2 flex-wrap">
+          <Badge bg="dark">{disponibilites.length} disponibilite(s)</Badge>
+          <Badge bg={mecaniciensNonConfigures.length > 0 ? 'warning' : 'success'} text={mecaniciensNonConfigures.length > 0 ? 'dark' : undefined}>
+            {mecaniciensNonConfigures.length} non configure(s)
+          </Badge>
+        </div>
       </div>
 
       {loading && (
@@ -150,6 +190,17 @@ function GestionDisponibilitesMecaniciensGarage() {
       )}
       {message && <Alert variant="success">{message}</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
+
+      {mecaniciensNonConfigures.length > 0 && (
+        <Alert variant="warning">
+          <div className="fw-semibold mb-1">Mecaniciens sans disponibilites</div>
+          <div className="small">
+            {mecaniciensNonConfigures
+              .map(({ mecanicien }) => `${mecanicien.first_name || ''} ${mecanicien.last_name || ''}`.trim() || mecanicien.username)
+              .join(', ')}
+          </div>
+        </Alert>
+      )}
 
       <Row className="g-4">
         <Col lg={4}>
@@ -174,7 +225,7 @@ function GestionDisponibilitesMecaniciensGarage() {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Jour</Form.Label>
+                  <Form.Label>Jour de reference</Form.Label>
                   <Form.Select
                     value={formData.jour_semaine}
                     onChange={(event) => setFormData((current) => ({ ...current, jour_semaine: event.target.value }))}
@@ -207,6 +258,33 @@ function GestionDisponibilitesMecaniciensGarage() {
                     </Form.Group>
                   </Col>
                 </Row>
+
+                <Alert variant="light" className="small">
+                  Les chevauchements sont bloques. Utilisez les jours ci-dessous pour dupliquer rapidement le meme creneau sur plusieurs jours.
+                </Alert>
+
+                <div className="mb-3">
+                  <Form.Label>Dupliquer aussi sur</Form.Label>
+                  <div className="d-flex flex-wrap gap-2">
+                    {JOURS.map((jour) => (
+                      <Form.Check
+                        key={jour.value}
+                        inline
+                        type="checkbox"
+                        id={`repeat-${jour.value}`}
+                        label={jour.label}
+                        checked={Boolean(repeatDays[jour.value])}
+                        disabled={Number(formData.jour_semaine) === jour.value}
+                        onChange={(event) => {
+                          setRepeatDays((current) => ({
+                            ...current,
+                            [jour.value]: event.target.checked,
+                          }));
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
 
                 <Button type="submit" variant="dark" disabled={loading} className="w-100">
                   Enregistrer
@@ -245,9 +323,14 @@ function GestionDisponibilitesMecaniciensGarage() {
                         </Card.Title>
                         <div className="text-muted small">{mecanicien.email || 'Courriel non renseigne'}</div>
                       </div>
-                      <Badge bg={items.length > 0 ? 'success' : 'secondary'}>
-                        {items.length} creneau(x)
-                      </Badge>
+                      <div className="d-flex flex-column align-items-end gap-2">
+                        <Badge bg={items.length > 0 ? 'success' : 'secondary'}>
+                          {items.length} creneau(x)
+                        </Badge>
+                        {items.length === 0 && (
+                          <Badge bg="warning" text="dark">A configurer</Badge>
+                        )}
+                      </div>
                     </div>
 
                     {items.length > 0 ? (

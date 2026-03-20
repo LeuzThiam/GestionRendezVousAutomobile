@@ -373,3 +373,40 @@ class UsersApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['mecanicien'], mecanicien.id)
+
+    def test_owner_cannot_create_overlapping_mecanicien_disponibilite(self):
+        owner = User.objects.create_user(username='owner-overlap-disp', password='testpass123')
+        garage = Garage.objects.create(name='Garage Overlap Disp', slug='garage-overlap-disp', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-overlap', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        MecanicienDisponibilite.objects.create(
+            mecanicien=mecanicien,
+            jour_semaine=1,
+            heure_debut='09:00',
+            heure_fin='12:00',
+            actif=True,
+        )
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/users/owner/mecaniciens/disponibilites/',
+            {
+                'mecanicien': mecanicien.id,
+                'jour_semaine': 1,
+                'heure_debut': '11:00',
+                'heure_fin': '13:00',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

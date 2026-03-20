@@ -8,14 +8,18 @@ import {
   faCalendarCheck,
   faClock,
   faCopy,
+  faEye,
   faLink,
+  faPaperPlane,
   faScrewdriverWrench,
   faTriangleExclamation,
   faUserGear,
 } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
+import { fetchGarageDisponibilitesRequest } from '../api/disponibilites';
 import { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } from '../api/mecaniciens';
 import { fetchRendezVousRequest } from '../api/rendezVous';
+import { fetchGarageServicesRequest } from '../api/services';
 import { useAuth } from '../shared/auth/AuthContext';
 import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/rendezVousStatus';
 
@@ -23,6 +27,8 @@ function DashboardGarage() {
   const { currentGarage, loading, error, user, refreshCurrentGarage } = useAuth();
   const [mecaniciens, setMecaniciens] = useState([]);
   const [disponibilitesMecaniciens, setDisponibilitesMecaniciens] = useState([]);
+  const [garageDisponibilites, setGarageDisponibilites] = useState([]);
+  const [garageServices, setGarageServices] = useState([]);
   const [rendezVous, setRendezVous] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(null);
@@ -41,9 +47,11 @@ function DashboardGarage() {
       try {
         setDashboardLoading(true);
         setDashboardError(null);
-        const [mecaniciensData, rendezVousData] = await Promise.all([
+        const [mecaniciensData, rendezVousData, servicesData, disponibilitesGarageData] = await Promise.all([
           fetchGarageMecaniciensRequest(),
           fetchRendezVousRequest(),
+          fetchGarageServicesRequest(),
+          fetchGarageDisponibilitesRequest(),
         ]);
         const disponibilitesData = await fetchMecanicienDisponibilitesRequest();
 
@@ -53,6 +61,8 @@ function DashboardGarage() {
 
         setMecaniciens(mecaniciensData);
         setRendezVous(rendezVousData);
+        setGarageServices(servicesData);
+        setGarageDisponibilites(disponibilitesGarageData);
         setDisponibilitesMecaniciens(disponibilitesData);
       } catch (requestError) {
         if (!mounted) {
@@ -82,27 +92,12 @@ function DashboardGarage() {
     };
   }, [currentGarage]);
 
+  const today = new Date().toISOString().slice(0, 10);
   const publicReservationUrl = currentGarage?.slug
     ? `${window.location.origin}/garage/${currentGarage.slug}/reservation`
     : null;
-
-  const metrics = useMemo(() => {
-    const pendingCount = rendezVous.filter((item) => item.status === 'pending').length;
-    const confirmedCount = rendezVous.filter((item) => item.status === 'confirmed').length;
-    const modificationCount = rendezVous.filter((item) => item.status === 'modification_requested').length;
-    const closedCount = rendezVous.filter((item) => (
-      item.status === 'cancelled' || item.status === 'rejected' || item.status === 'refused'
-    )).length;
-
-    return {
-      mecaniciensCount: mecaniciens.length,
-      pendingCount,
-      confirmedCount,
-      modificationCount,
-      closedCount,
-      totalRendezVous: rendezVous.length,
-    };
-  }, [mecaniciens, rendezVous]);
+  const activeGarageServicesCount = useMemo(() => garageServices.filter((item) => item.actif !== false).length, [garageServices]);
+  const activeGarageDisponibilitesCount = useMemo(() => garageDisponibilites.filter((item) => item.actif !== false).length, [garageDisponibilites]);
 
   const mecaniciensWithoutAvailability = useMemo(() => {
     if (!mecaniciens.length) {
@@ -117,36 +112,56 @@ function DashboardGarage() {
     return rendezVous.filter((item) => item.status === 'confirmed' && !item.mecanicien).length;
   }, [rendezVous]);
 
-  const dashboardAlertsCount = mecaniciensWithoutAvailability + confirmedWithoutMecanicien + metrics.modificationCount;
-
-  const todayAppointments = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return rendezVous.filter((item) => item.date?.slice(0, 10) === today).length;
-  }, [rendezVous]);
-
-  const operationalSignal = useMemo(() => {
-    if (metrics.pendingCount >= 5) {
-      return {
-        label: 'Attention requise',
-        description: 'Le volume de demandes en attente commence a s accumuler.',
-        tone: 'warning',
-      };
-    }
-
-    if (metrics.totalRendezVous === 0) {
-      return {
-        label: 'Demarrage',
-        description: 'Le garage est pret, il faut maintenant generer les premiers rendez-vous.',
-        tone: 'muted',
-      };
-    }
+  const metrics = useMemo(() => {
+    const pendingCount = rendezVous.filter((item) => item.status === 'pending').length;
+    const confirmedCount = rendezVous.filter((item) => item.status === 'confirmed').length;
+    const modificationCount = rendezVous.filter((item) => item.status === 'modification_requested').length;
+    const rejectedCount = rendezVous.filter((item) => item.status === 'rejected').length;
+    const closedCount = rendezVous.filter((item) => (
+      item.status === 'cancelled' || item.status === 'rejected' || item.status === 'done'
+    )).length;
+    const pendingRescheduleResponses = rendezVous.filter((item) => item.has_pending_reschedule).length;
+    const todaysPendingCount = rendezVous.filter((item) => item.status === 'pending' && item.date?.slice(0, 10) === today).length;
+    const todaysConfirmedCount = rendezVous.filter((item) => item.status === 'confirmed' && item.date?.slice(0, 10) === today).length;
+    const responseTimes = rendezVous
+      .filter((item) => item.status === 'confirmed' && item.confirmed_at)
+      .map((item) => {
+        const requestedAt = new Date(item.date);
+        const confirmedAt = new Date(item.confirmed_at);
+        const diffHours = (confirmedAt.getTime() - requestedAt.getTime()) / 3600000;
+        return diffHours > 0 ? diffHours : null;
+      })
+      .filter((value) => value !== null);
+    const averageResponseHours = responseTimes.length
+      ? responseTimes.reduce((total, value) => total + value, 0) / responseTimes.length
+      : null;
+    const refusalRate = rendezVous.length ? Math.round((rejectedCount / rendezVous.length) * 100) : 0;
 
     return {
-      label: 'Flux maitrise',
-      description: 'Les operations sont stables et les demandes restent sous controle.',
-      tone: 'success',
+      mecaniciensCount: mecaniciens.length,
+      pendingCount,
+      confirmedCount,
+      modificationCount,
+      rejectedCount,
+      closedCount,
+      totalRendezVous: rendezVous.length,
+      pendingRescheduleResponses,
+      todaysPendingCount,
+      todaysConfirmedCount,
+      averageResponseHours,
+      refusalRate,
+      actionableBacklogCount: pendingCount + modificationCount + pendingRescheduleResponses,
     };
-  }, [metrics.pendingCount, metrics.totalRendezVous]);
+  }, [mecaniciens.length, rendezVous, today]);
+
+  const todayActivity = useMemo(() => {
+    return rendezVous
+      .filter((item) => item.date?.slice(0, 10) === today)
+      .sort((left, right) => new Date(left.date) - new Date(right.date))
+      .slice(0, 6);
+  }, [rendezVous, today]);
+
+  const dashboardAlertsCount = metrics.pendingRescheduleResponses + confirmedWithoutMecanicien + mecaniciensWithoutAvailability;
 
   const conversionRate = useMemo(() => {
     if (!metrics.totalRendezVous) {
@@ -156,11 +171,69 @@ function DashboardGarage() {
     return Math.round((metrics.confirmedCount / metrics.totalRendezVous) * 100);
   }, [metrics.confirmedCount, metrics.totalRendezVous]);
 
-  const latestRendezVous = useMemo(() => {
-    return [...rendezVous]
-      .sort((left, right) => new Date(right.date) - new Date(left.date))
-      .slice(0, 5);
-  }, [rendezVous]);
+  const readinessChecklist = useMemo(() => {
+    const missing = [];
+    if (!currentGarage?.description) {
+      missing.push({
+        label: 'Ajouter une description publique du garage',
+        cta: '/garage/profil',
+        ctaLabel: 'Completer le profil',
+      });
+    }
+    if (!currentGarage?.phone || !currentGarage?.address) {
+      missing.push({
+        label: 'Completer les coordonnees visibles par les clients',
+        cta: '/garage/profil',
+        ctaLabel: 'Corriger le profil',
+      });
+    }
+    if (!metrics.mecaniciensCount) {
+      missing.push({
+        label: 'Ajouter au moins un mecanicien a l equipe',
+        cta: '/garage/mecaniciens',
+        ctaLabel: 'Ajouter un mecanicien',
+      });
+    }
+    if (mecaniciensWithoutAvailability > 0) {
+      missing.push({
+        label: `${mecaniciensWithoutAvailability} mecanicien(s) sans disponibilites`,
+        cta: '/garage/mecaniciens/disponibilites',
+        ctaLabel: 'Definir les disponibilites',
+      });
+    }
+    if (!metrics.totalRendezVous) {
+      missing.push({
+        label: 'Commencer a diffuser le lien public de reservation',
+        cta: currentGarage?.slug ? `/garage/${currentGarage.slug}/reservation` : '/garage/dashboard',
+        ctaLabel: 'Voir la page publique',
+      });
+    }
+    return missing;
+  }, [currentGarage, mecaniciensWithoutAvailability, metrics.mecaniciensCount, metrics.totalRendezVous]);
+
+  const operationalSignal = useMemo(() => {
+    if (metrics.actionableBacklogCount >= 5) {
+      return {
+        label: 'Attention requise',
+        description: 'Le garage a plusieurs decisions en attente qui ralentissent le flux.',
+        tone: 'warning',
+      };
+    }
+
+    if (readinessChecklist.length > 0) {
+      return {
+        label: 'Preparation incomplete',
+        description: 'Le garage peut tourner, mais certains elements de base restent a finaliser.',
+        tone: 'muted',
+      };
+    }
+
+    return {
+      label: 'Operationnel',
+      description: 'Le garage est configure et le flux courant reste sous controle.',
+      tone: 'success',
+    };
+  }, [metrics.actionableBacklogCount, readinessChecklist.length]);
 
   const handleCopyLink = async () => {
     if (!publicReservationUrl) {
@@ -175,6 +248,28 @@ function DashboardGarage() {
     }
   };
 
+  const handleShareLink = async () => {
+    if (!publicReservationUrl) {
+      return;
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: currentGarage?.name || 'GarageFlow',
+          text: 'Prenez rendez-vous en ligne avec notre garage.',
+          url: publicReservationUrl,
+        });
+        setCopyMessage('Lien public partage.');
+        return;
+      } catch {
+        // Fallback on copy if share is cancelled or unavailable.
+      }
+    }
+
+    await handleCopyLink();
+  };
+
   const formatDateTime = (value) => {
     if (!value) {
       return '-';
@@ -185,6 +280,22 @@ function DashboardGarage() {
       timeStyle: 'short',
     }).format(new Date(value));
   };
+
+  const publicProfileMissing = [];
+  if (!currentGarage?.description) {
+    publicProfileMissing.push('description');
+  }
+  if (!currentGarage?.phone || !currentGarage?.address) {
+    publicProfileMissing.push('coordonnees');
+  }
+  if (!activeGarageServicesCount) {
+    publicProfileMissing.push('services');
+  }
+  if (!activeGarageDisponibilitesCount) {
+    publicProfileMissing.push('horaires');
+  }
+  const publicProfileReady = publicProfileMissing.length === 0;
+  const publicRequestsCount = metrics.totalRendezVous;
 
   return (
     <Container className="py-5 dashboard-garage">
@@ -208,7 +319,7 @@ function DashboardGarage() {
                   </div>
                   <p className="dashboard-hero-text mb-0">
                     {currentGarage?.description
-                      || 'Une vue operationnelle pour suivre l equipe, les rendez-vous et la reservation publique sans naviguer entre plusieurs ecrans.'}
+                      || 'Une vue de pilotage pour traiter les demandes, organiser l equipe et garder un garage operationnel.'}
                   </p>
                 </div>
 
@@ -228,19 +339,10 @@ function DashboardGarage() {
                 <Col sm={6} lg={3}>
                   <div className="dashboard-stat-card">
                     <div className="dashboard-stat-icon">
-                      <FontAwesomeIcon icon={faUserGear} />
-                    </div>
-                    <span className="dashboard-stat-label">Mecaniciens</span>
-                    <strong className="dashboard-stat-value">{metrics.mecaniciensCount}</strong>
-                  </div>
-                </Col>
-                <Col sm={6} lg={3}>
-                  <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-icon">
                       <FontAwesomeIcon icon={faClock} />
                     </div>
-                    <span className="dashboard-stat-label">RDV en attente</span>
-                    <strong className="dashboard-stat-value">{metrics.pendingCount}</strong>
+                    <span className="dashboard-stat-label">A confirmer aujourd hui</span>
+                    <strong className="dashboard-stat-value">{metrics.todaysPendingCount}</strong>
                   </div>
                 </Col>
                 <Col sm={6} lg={3}>
@@ -248,8 +350,10 @@ function DashboardGarage() {
                     <div className="dashboard-stat-icon">
                       <FontAwesomeIcon icon={faCalendarCheck} />
                     </div>
-                    <span className="dashboard-stat-label">RDV confirmes</span>
-                    <strong className="dashboard-stat-value">{metrics.confirmedCount}</strong>
+                    <span className="dashboard-stat-label">Temps moyen de reponse</span>
+                    <strong className="dashboard-stat-value">
+                      {metrics.averageResponseHours !== null ? `${metrics.averageResponseHours.toFixed(1)} h` : '-'}
+                    </strong>
                   </div>
                 </Col>
                 <Col sm={6} lg={3}>
@@ -257,8 +361,17 @@ function DashboardGarage() {
                     <div className="dashboard-stat-icon">
                       <FontAwesomeIcon icon={faBolt} />
                     </div>
-                    <span className="dashboard-stat-label">Demandes de modif</span>
-                    <strong className="dashboard-stat-value">{metrics.modificationCount}</strong>
+                    <span className="dashboard-stat-label">Taux de refus</span>
+                    <strong className="dashboard-stat-value">{metrics.refusalRate}%</strong>
+                  </div>
+                </Col>
+                <Col sm={6} lg={3}>
+                  <div className="dashboard-stat-card">
+                    <div className="dashboard-stat-icon">
+                      <FontAwesomeIcon icon={faUserGear} />
+                    </div>
+                    <span className="dashboard-stat-label">Equipe mecanique</span>
+                    <strong className="dashboard-stat-value">{metrics.mecaniciensCount}</strong>
                   </div>
                 </Col>
               </Row>
@@ -281,10 +394,6 @@ function DashboardGarage() {
                 </div>
               </div>
 
-              <p className="text-muted small mb-3">
-                Partagez ce lien a vos clients pour qu ils demandent un rendez-vous.
-              </p>
-
               <div className="dashboard-link-box mb-3">
                 {publicReservationUrl || 'Lien indisponible'}
               </div>
@@ -292,9 +401,18 @@ function DashboardGarage() {
               <div className="d-flex flex-wrap gap-2">
                 {currentGarage?.slug && (
                   <Button as={Link} to={`/garage/${currentGarage.slug}/reservation`} variant="dark">
-                    Ouvrir la page
+                    <FontAwesomeIcon icon={faEye} className="me-2" />
+                    Apercu public
                   </Button>
                 )}
+                <Button
+                  variant="outline-primary"
+                  onClick={handleShareLink}
+                  disabled={!publicReservationUrl}
+                >
+                  <FontAwesomeIcon icon={faPaperPlane} className="me-2" />
+                  Partager
+                </Button>
                 <Button
                   variant="outline-dark"
                   onClick={handleCopyLink}
@@ -309,10 +427,36 @@ function DashboardGarage() {
                 <p className="small text-muted mt-3 mb-0">{copyMessage}</p>
               )}
 
+              {!publicProfileReady && (
+                <Alert variant="warning" className="mt-4 mb-0">
+                  <div className="fw-semibold mb-1">Diffusion a completer avant partage large</div>
+                  <div className="small">
+                    Il manque encore : {publicProfileMissing.join(', ')}.
+                  </div>
+                  <div className="d-flex flex-wrap gap-2 mt-2">
+                    {publicProfileMissing.includes('description') || publicProfileMissing.includes('coordonnees') ? (
+                      <Button as={Link} to="/garage/profil" size="sm" variant="outline-dark">
+                        Completer le profil
+                      </Button>
+                    ) : null}
+                    {publicProfileMissing.includes('services') ? (
+                      <Button as={Link} to="/garage/services" size="sm" variant="outline-dark">
+                        Ajouter des services
+                      </Button>
+                    ) : null}
+                    {publicProfileMissing.includes('horaires') ? (
+                      <Button as={Link} to="/garage/disponibilites" size="sm" variant="outline-dark">
+                        Definir les horaires
+                      </Button>
+                    ) : null}
+                  </div>
+                </Alert>
+              )}
+
               <div className="dashboard-mini-metrics mt-4">
                 <div>
-                  <span>Aujourd hui</span>
-                  <strong>{todayAppointments}</strong>
+                  <span>RDV du jour</span>
+                  <strong>{metrics.todaysConfirmedCount}</strong>
                 </div>
                 <div>
                   <span>Taux confirme</span>
@@ -321,6 +465,14 @@ function DashboardGarage() {
                 <div>
                   <span>Alertes</span>
                   <strong>{dashboardAlertsCount}</strong>
+                </div>
+                <div>
+                  <span>Backlog</span>
+                  <strong>{metrics.actionableBacklogCount}</strong>
+                </div>
+                <div>
+                  <span>Demandes via lien</span>
+                  <strong>{publicRequestsCount}</strong>
                 </div>
               </div>
             </Card.Body>
@@ -347,28 +499,73 @@ function DashboardGarage() {
         </Alert>
       )}
 
+      {(metrics.actionableBacklogCount > 0 || readinessChecklist.length > 0) && (
+        <Alert variant="warning" className="mb-4">
+          <div className="d-flex flex-column gap-3">
+            <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+              <div>
+                <strong>Alertes prioritaires</strong>
+                <div className="small">
+                  {metrics.actionableBacklogCount > 0
+                    ? `${metrics.actionableBacklogCount} element(s) demandent une action immediate du garage.`
+                    : 'Le flux est stable, vous pouvez finaliser la configuration du garage.'}
+                </div>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                {metrics.pendingCount > 0 && (
+                  <Button as={Link} to="/garage/rendez-vous" variant="dark">
+                    Traiter les demandes
+                  </Button>
+                )}
+                {metrics.pendingRescheduleResponses > 0 && (
+                  <Button as={Link} to="/garage/rendez-vous" variant="outline-dark">
+                    Voir les reprogrammations
+                  </Button>
+                )}
+                {readinessChecklist.length > 0 && (
+                  <Button as={Link} to={readinessChecklist[0].cta} variant="outline-secondary">
+                    Corriger le manque principal
+                  </Button>
+                )}
+              </div>
+            </div>
+            {readinessChecklist.length > 0 && (
+              <div className="small d-flex flex-column gap-2">
+                {readinessChecklist.slice(0, 3).map((item) => (
+                  <div key={item.label} className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 border rounded p-2 bg-white">
+                    <span>{item.label}</span>
+                    <Button as={Link} to={item.cta} size="sm" variant="outline-dark">
+                      {item.ctaLabel}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Alert>
+      )}
+
       <Row className="g-4">
         <Col lg={7}>
           <Card className="shadow-sm h-100 border-0">
             <Card.Body className="p-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <Card.Title className="mb-0">Activite recente</Card.Title>
-                <Badge bg="dark">{metrics.totalRendezVous} rendez-vous</Badge>
+                <Card.Title className="mb-0">Activite du jour</Card.Title>
+                <Badge bg="dark">{todayActivity.length} element(s)</Badge>
               </div>
 
-              {latestRendezVous.length === 0 ? (
+              {todayActivity.length === 0 ? (
                 <div className="dashboard-empty-state">
-                  Aucun rendez-vous pour le moment. Commencez par partager votre lien public
-                  ou ajouter votre equipe.
+                  Aucune activite prevue aujourd hui. La priorite utile est de traiter les demandes ouvertes ou de diffuser le lien public.
                 </div>
               ) : (
                 <div className="dashboard-activity-list">
-                  {latestRendezVous.map((item) => (
+                  {todayActivity.map((item) => (
                     <div key={item.id} className="dashboard-activity-item">
                       <div>
                         <div className="fw-semibold">{formatDateTime(item.date)}</div>
                         <div className="small text-muted">
-                          {item.description || 'Sans description'}
+                          {item.client_name || 'Client'} · {item.service_details?.nom || item.description || 'Sans description'}
                         </div>
                       </div>
                       <Badge bg={getRendezVousStatusVariant(item.status)}>
@@ -405,20 +602,28 @@ function DashboardGarage() {
                   <strong>{metrics.closedCount}</strong>
                 </div>
                 <div className="dashboard-health-item">
+                  <span>En attente</span>
+                  <strong>{metrics.pendingCount}</strong>
+                </div>
+                <div className="dashboard-health-item">
+                  <span>Demandes de modif</span>
+                  <strong>{metrics.modificationCount}</strong>
+                </div>
+                <div className="dashboard-health-item">
                   <span>Sans mecanicien</span>
                   <strong>{confirmedWithoutMecanicien}</strong>
                 </div>
                 <div className="dashboard-health-item">
-                  <span>Garage ID</span>
-                  <strong>{user?.garage_id || currentGarage?.id || '-'}</strong>
-                </div>
-                <div className="dashboard-health-item">
-                  <span>Proprietaire</span>
-                  <strong>{user?.first_name || user?.username || '-'}</strong>
-                </div>
-                <div className="dashboard-health-item">
                   <span>Disponibilites manquantes</span>
                   <strong>{mecaniciensWithoutAvailability}</strong>
+                </div>
+                <div className="dashboard-health-item">
+                  <span>Reponses attendues</span>
+                  <strong>{metrics.pendingRescheduleResponses}</strong>
+                </div>
+                <div className="dashboard-health-item">
+                  <span>Garage ID</span>
+                  <strong>{user?.garage_id || currentGarage?.id || '-'}</strong>
                 </div>
               </div>
 
@@ -430,12 +635,37 @@ function DashboardGarage() {
                 <p className="mb-0">
                   {metrics.pendingCount > 0
                     ? `Traiter ${metrics.pendingCount} demande(s) en attente pour garder un delai de reponse professionnel.`
-                    : confirmedWithoutMecanicien > 0
-                      ? `${confirmedWithoutMecanicien} rendez-vous confirme(s) doivent encore etre rattaches proprement a un mecanicien.`
-                      : mecaniciensWithoutAvailability > 0
-                        ? `${mecaniciensWithoutAvailability} mecanicien(s) n ont pas encore de disponibilites configurees.`
-                        : "Aucune urgence immediate. Vous pouvez travailler la configuration du garage et l acquisition client."}
+                    : metrics.pendingRescheduleResponses > 0
+                      ? `${metrics.pendingRescheduleResponses} reprogrammation(s) attendent encore une decision du garage.`
+                      : confirmedWithoutMecanicien > 0
+                        ? `${confirmedWithoutMecanicien} rendez-vous confirme(s) doivent encore etre rattaches a un mecanicien.`
+                        : mecaniciensWithoutAvailability > 0
+                          ? `${mecaniciensWithoutAvailability} mecanicien(s) n ont pas encore de disponibilites configurees.`
+                          : "Aucune urgence immediate. Le garage peut se concentrer sur la qualite de service et l acquisition client."}
                 </p>
+              </div>
+
+              <div className="dashboard-priority-block mt-4">
+                <div className="dashboard-priority-head">
+                  <FontAwesomeIcon icon={faBolt} />
+                  <strong>Ce qui manque pour etre operationnel</strong>
+                </div>
+                {readinessChecklist.length > 0 ? (
+                  <div className="small d-flex flex-column gap-2">
+                    {readinessChecklist.map((item) => (
+                      <div key={item.label} className="d-flex justify-content-between align-items-center gap-2">
+                        <span>{item.label}</span>
+                        <Button as={Link} to={item.cta} size="sm" variant="outline-dark">
+                          {item.ctaLabel}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mb-0 small">
+                    Le garage est suffisamment configure pour tourner proprement sur le MVP.
+                  </p>
+                )}
               </div>
             </Card.Body>
           </Card>
@@ -507,7 +737,7 @@ function DashboardGarage() {
                 <Card.Title className="mb-0">Planning</Card.Title>
               </div>
               <Card.Text>
-                Consultez les rendez-vous confirmes par jour et visualisez rapidement la charge de l atelier.
+                Consultez la grille horaire, la charge de l atelier et les conflits de creneaux.
               </Card.Text>
               <Button as={Link} to="/garage/planning" variant="outline-dark">
                 Ouvrir le planning
@@ -557,11 +787,11 @@ function DashboardGarage() {
             <Card.Body className="p-4">
               <div className="dashboard-action-head">
                 <FontAwesomeIcon icon={faArrowTrendUp} />
-                <Card.Title className="mb-0">Vision MVP</Card.Title>
+                <Card.Title className="mb-0">Pilotage</Card.Title>
               </div>
               <Card.Text>
-                Prochaine etape logique: ajouter les services, les disponibilites et un vrai suivi
-                des rendez-vous par garage.
+                Temps moyen de reponse : {metrics.averageResponseHours !== null ? `${metrics.averageResponseHours.toFixed(1)} h` : 'non calcule'}.
+                Taux de refus : {metrics.refusalRate}%.
               </Card.Text>
               <Badge bg="secondary">{metrics.closedCount} rendez-vous clos</Badge>
             </Card.Body>
