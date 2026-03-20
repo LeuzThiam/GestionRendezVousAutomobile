@@ -1,11 +1,12 @@
 # users/views.py
 
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django.utils import timezone
 
 from .serializers import (
     AuthLoginSerializer,
@@ -17,6 +18,7 @@ from .serializers import (
     MyTokenObtainPairSerializer,
     UserListSerializer,
     MecanicienCreateSerializer,
+    MecanicienUpdateSerializer,
     MecanicienDisponibiliteSerializer,
 )
 from .permissions import IsGarageOwner
@@ -157,12 +159,31 @@ class MecanicienManagementView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
 
-class MecanicienDetailView(generics.DestroyAPIView):
-    serializer_class = UserListSerializer
+class MecanicienDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated, IsGarageOwner]
+
+    def get_serializer_class(self):
+        if self.request.method in {'PUT', 'PATCH'}:
+            return MecanicienUpdateSerializer
+        return UserListSerializer
 
     def get_queryset(self):
         return list_mecaniciens_for_garage(get_user_garage(self.request.user))
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        has_upcoming_rendezvous = instance.rendezvous_mecanicien.filter(
+            status='confirmed',
+            date__gte=timezone.now(),
+        ).exists()
+        if has_upcoming_rendezvous:
+            return Response(
+                {
+                    'detail': "Ce mecanicien a encore des rendez-vous a venir. Desactivez-le au lieu de le supprimer."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class MecanicienDisponibiliteListCreateView(generics.ListCreateAPIView):

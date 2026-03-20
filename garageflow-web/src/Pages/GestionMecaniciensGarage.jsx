@@ -9,11 +9,13 @@ import {
   faTrash,
   faUserGear,
   faUsers,
+  faWrench,
 } from '@fortawesome/free-solid-svg-icons';
 import {
   createMecanicienRequest,
   deleteMecanicienRequest,
   fetchGarageMecaniciensRequest,
+  updateMecanicienRequest,
 } from '../api/mecaniciens';
 
 function flattenError(error) {
@@ -35,18 +37,21 @@ function buildInitials(mecanicien) {
   return (first + last).toUpperCase() || 'MG';
 }
 
+const emptyForm = {
+  username: '',
+  first_name: '',
+  last_name: '',
+  email: '',
+  password: '',
+  password2: '',
+  specialites: '',
+};
+
 function GestionMecaniciensGarage() {
   const [mecaniciens, setMecaniciens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({
-    username: '',
-    first_name: '',
-    last_name: '',
-    email: '',
-    password: '',
-    password2: '',
-  });
+  const [formData, setFormData] = useState(emptyForm);
   const [localMessage, setLocalMessage] = useState(null);
 
   const loadMecaniciens = async () => {
@@ -70,7 +75,9 @@ function GestionMecaniciensGarage() {
   const stats = useMemo(() => {
     return {
       total: mecaniciens.length,
-      withEmail: mecaniciens.filter((item) => Boolean(item.email)).length,
+      active: mecaniciens.filter((item) => item.is_active).length,
+      withDisponibilites: mecaniciens.filter((item) => Number(item.disponibilites_count) > 0).length,
+      busyToday: mecaniciens.filter((item) => Number(item.rdv_today_count) > 0).length,
     };
   }, [mecaniciens]);
 
@@ -87,15 +94,39 @@ function GestionMecaniciensGarage() {
       setError(null);
       const mecanicien = await createMecanicienRequest(formData);
       setMecaniciens((current) => [mecanicien, ...current]);
-      setFormData({
-        username: '',
-        first_name: '',
-        last_name: '',
-        email: '',
-        password: '',
-        password2: '',
-      });
+      setFormData(emptyForm);
       setLocalMessage('Mecanicien ajoute au garage.');
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (mecanicien) => {
+    setLocalMessage(null);
+    try {
+      setLoading(true);
+      setError(null);
+      const updated = await updateMecanicienRequest(mecanicien.id, {
+        is_active: !mecanicien.is_active,
+      });
+      setMecaniciens((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setLocalMessage(updated.is_active ? 'Mecanicien reactive.' : 'Mecanicien desactive.');
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSpecialitesUpdate = async (mecanicien, specialites) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updated = await updateMecanicienRequest(mecanicien.id, { specialites });
+      setMecaniciens((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setLocalMessage('Specialites mises a jour.');
     } catch (requestError) {
       setError(requestError);
     } finally {
@@ -110,6 +141,7 @@ function GestionMecaniciensGarage() {
       setError(null);
       await deleteMecanicienRequest(mecanicienId);
       setMecaniciens((current) => current.filter((mecanicien) => mecanicien.id !== mecanicienId));
+      setLocalMessage('Mecanicien supprime.');
     } catch (requestError) {
       setError(requestError);
     } finally {
@@ -133,8 +165,7 @@ function GestionMecaniciensGarage() {
                     Gerer les mecaniciens
                   </h1>
                   <p className="mecaniciens-hero-text mb-0">
-                    Creez les comptes de votre equipe et gardez une vision claire des mecaniciens
-                    actifs dans votre garage.
+                    Structurez votre equipe, ses competences et sa charge operationnelle sans supprimer brutalement des comptes utiles.
                   </p>
                 </div>
 
@@ -144,8 +175,16 @@ function GestionMecaniciensGarage() {
                     <strong>{stats.total}</strong>
                   </div>
                   <div>
-                    <span>Courriels renseignes</span>
-                    <strong>{stats.withEmail}</strong>
+                    <span>Actifs</span>
+                    <strong>{stats.active}</strong>
+                  </div>
+                  <div>
+                    <span>Avec dispos</span>
+                    <strong>{stats.withDisponibilites}</strong>
+                  </div>
+                  <div>
+                    <span>Occupes aujourd hui</span>
+                    <strong>{stats.busyToday}</strong>
                   </div>
                 </div>
               </div>
@@ -163,15 +202,15 @@ function GestionMecaniciensGarage() {
                 <div>
                   <Card.Title className="mb-1">Organisation</Card.Title>
                   <p className="small text-muted mb-0">
-                    Structure minimale pour un garage bien pilote.
+                    Statut, competences et charge doivent rester visibles.
                   </p>
                 </div>
               </div>
 
               <div className="mecaniciens-checklist">
-                <div>Ajouter chaque mecanicien avec un compte individuel.</div>
-                <div>Renseigner un courriel professionnel pour la connexion.</div>
-                <div>Supprimer les comptes inutiles pour garder un espace propre.</div>
+                <div>Desactiver un mecanicien absent plutot que le supprimer trop vite.</div>
+                <div>Renseigner ses specialites pour faciliter les affectations.</div>
+                <div>Verifier la charge du jour et les rendez-vous confirmes avant toute action.</div>
               </div>
             </Card.Body>
           </Card>
@@ -249,6 +288,16 @@ function GestionMecaniciensGarage() {
                   />
                 </Form.Group>
 
+                <Form.Group className="mb-3">
+                  <Form.Label>Specialites / competences</Form.Label>
+                  <Form.Control
+                    name="specialites"
+                    value={formData.specialites}
+                    onChange={handleChange}
+                    placeholder="Freinage, moteur, diagnostic"
+                  />
+                </Form.Group>
+
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
@@ -292,7 +341,7 @@ function GestionMecaniciensGarage() {
                 <div>
                   <Card.Title className="mb-1">Equipe mecanique</Card.Title>
                   <p className="small text-muted mb-0">
-                    Vue d ensemble des mecaniciens rattaches au garage.
+                    Vue d ensemble avec statut, competences et charge.
                   </p>
                 </div>
                 {loading && <Spinner animation="border" size="sm" />}
@@ -310,7 +359,9 @@ function GestionMecaniciensGarage() {
                         <div className="mecanicien-avatar">
                           {buildInitials(mecanicien)}
                         </div>
-                        <Badge bg="light" text="dark">Mecanicien</Badge>
+                        <Badge bg={mecanicien.is_active ? 'success' : 'secondary'}>
+                          {mecanicien.is_active ? 'Actif' : 'Inactif'}
+                        </Badge>
                       </div>
 
                       <h3 className="mecanicien-name">
@@ -328,11 +379,51 @@ function GestionMecaniciensGarage() {
                         </div>
                         <div>
                           <FontAwesomeIcon icon={faKey} />
-                          <span>Acces individuel actif</span>
+                          <span>{mecanicien.is_active ? 'Acces individuel actif' : 'Acces suspendu'}</span>
+                        </div>
+                        <div>
+                          <FontAwesomeIcon icon={faWrench} />
+                          <span>{mecanicien.specialites || 'Aucune specialite renseignee'}</span>
                         </div>
                       </div>
 
-                      <div className="mecanicien-card-actions">
+                      <div className="d-flex flex-wrap gap-2 mb-3">
+                        <Badge bg="light" text="dark">
+                          Confirmes: {mecanicien.rdv_confirmed_count || 0}
+                        </Badge>
+                        <Badge bg="light" text="dark">
+                          Aujourd hui: {mecanicien.rdv_today_count || 0}
+                        </Badge>
+                        <Badge bg="light" text="dark">
+                          A venir: {mecanicien.rdv_upcoming_count || 0}
+                        </Badge>
+                        <Badge bg="light" text="dark">
+                          Dispos: {mecanicien.disponibilites_count || 0}
+                        </Badge>
+                      </div>
+
+                      <Form.Group className="mb-3">
+                        <Form.Label className="small text-muted mb-1">Specialites</Form.Label>
+                        <Form.Control
+                          size="sm"
+                          defaultValue={mecanicien.specialites || ''}
+                          placeholder="Freinage, moteur, diagnostic"
+                          onBlur={(event) => {
+                            if ((event.target.value || '') !== (mecanicien.specialites || '')) {
+                              handleSpecialitesUpdate(mecanicien, event.target.value);
+                            }
+                          }}
+                        />
+                      </Form.Group>
+
+                      <div className="mecanicien-card-actions d-flex flex-wrap gap-2">
+                        <Button
+                          variant={mecanicien.is_active ? 'outline-secondary' : 'outline-success'}
+                          size="sm"
+                          onClick={() => handleToggleActive(mecanicien)}
+                        >
+                          {mecanicien.is_active ? 'Desactiver' : 'Reactiver'}
+                        </Button>
                         <Button
                           variant="outline-danger"
                           size="sm"

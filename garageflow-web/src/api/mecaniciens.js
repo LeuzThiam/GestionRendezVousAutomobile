@@ -19,6 +19,11 @@ export async function deleteMecanicienRequest(id) {
   await apiClient.delete(`/api/users/owner/mecaniciens/${id}/`);
 }
 
+export async function updateMecanicienRequest(id, payload) {
+  const response = await apiClient.patch(`/api/users/owner/mecaniciens/${id}/`, payload);
+  return response.data;
+}
+
 export async function fetchMecanicienDisponibilitesRequest(mecanicienId = '') {
   const response = await apiClient.get('/api/users/owner/mecaniciens/disponibilites/', {
     params: mecanicienId ? { mecanicien: mecanicienId } : undefined,

@@ -26,6 +26,7 @@ class Profile(models.Model):
         null=True,
         blank=True,
     )
+    specialites = models.CharField(max_length=255, blank=True)
     date_naissance = models.DateField(null=True, blank=True)
 
     def __str__(self):

@@ -283,20 +283,39 @@ class UserListSerializer(serializers.ModelSerializer):
     """
     role = serializers.CharField(source='profile.role', read_only=True)
     garage_id = serializers.IntegerField(source='profile.garage_id', read_only=True)
+    specialites = serializers.CharField(source='profile.specialites', read_only=True)
     disponibilites_count = serializers.IntegerField(source='disponibilites.count', read_only=True)
+    rdv_confirmed_count = serializers.IntegerField(read_only=True)
+    rdv_today_count = serializers.IntegerField(read_only=True)
+    rdv_upcoming_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'garage_id', 'disponibilites_count']
+        fields = [
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'email',
+            'is_active',
+            'role',
+            'garage_id',
+            'specialites',
+            'disponibilites_count',
+            'rdv_confirmed_count',
+            'rdv_today_count',
+            'rdv_upcoming_count',
+        ]
 
 
 class MecanicienCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
+    specialites = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'password2']
+        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'password2', 'specialites']
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -308,8 +327,34 @@ class MecanicienCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password')
         validated_data.pop('password2')
+        specialites = validated_data.pop('specialites', '')
 
-        return create_mecanicien_for_garage(garage=self.context['garage'], password=password, **validated_data)
+        return create_mecanicien_for_garage(
+            garage=self.context['garage'],
+            password=password,
+            specialites=specialites,
+            **validated_data,
+        )
+
+
+class MecanicienUpdateSerializer(serializers.ModelSerializer):
+    specialites = serializers.CharField(source='profile.specialites', required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email', 'is_active', 'specialites']
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile', {})
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+
+        if 'specialites' in profile_data:
+            instance.profile.specialites = profile_data['specialites']
+            instance.profile.save()
+
+        return instance
 
 
 class MecanicienDisponibiliteSerializer(serializers.ModelSerializer):
