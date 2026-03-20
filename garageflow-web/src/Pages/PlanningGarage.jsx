@@ -27,6 +27,34 @@ function formatTimeRange(item) {
   return `${item.jour_label} ${item.heure_debut} - ${item.heure_fin}`;
 }
 
+function getTimeKey(value) {
+  if (!value) {
+    return '';
+  }
+
+  return new Date(value).toLocaleTimeString('fr-CA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
+function isAppointmentWithinAvailability(appointment, mecanicienDisponibilites) {
+  if (!appointment?.date || !mecanicienDisponibilites.length) {
+    return false;
+  }
+
+  const appointmentDate = new Date(appointment.date);
+  const weekday = appointmentDate.getDay() === 0 ? 6 : appointmentDate.getDay() - 1;
+  const timeKey = getTimeKey(appointment.date);
+
+  return mecanicienDisponibilites.some((item) => (
+    item.jour_semaine === weekday
+    && item.heure_debut <= timeKey
+    && item.heure_fin >= timeKey
+  ));
+}
+
 function PlanningGarage() {
   const [rendezVous, setRendezVous] = useState([]);
   const [mecaniciens, setMecaniciens] = useState([]);
@@ -97,11 +125,17 @@ function PlanningGarage() {
         (item) => Number(item.mecanicien) === mecanicien.id
       );
       const mecanicienDisponibilites = disponibilites.filter((item) => item.mecanicien === mecanicien.id);
+      const appointmentsOutsideAvailability = mecanicienAppointments.filter((appointment) => (
+        mecanicienDisponibilites.length > 0
+          ? !isAppointmentWithinAvailability(appointment, mecanicienDisponibilites)
+          : false
+      ));
 
       return {
         mecanicien,
         appointments: mecanicienAppointments,
         disponibilites: mecanicienDisponibilites,
+        appointmentsOutsideAvailability,
       };
     });
   }, [appointmentsForSelectedDate, disponibilites, mecaniciens]);
@@ -119,6 +153,17 @@ function PlanningGarage() {
     return Math.round((busyCount / mecaniciens.length) * 100);
   }, [mecaniciens.length, planningByMecanicien]);
 
+  const mecaniciensWithoutAvailability = useMemo(() => {
+    return planningByMecanicien.filter((entry) => entry.disponibilites.length === 0).length;
+  }, [planningByMecanicien]);
+
+  const appointmentsOutsideAvailabilityCount = useMemo(() => {
+    return planningByMecanicien.reduce(
+      (total, entry) => total + entry.appointmentsOutsideAvailability.length,
+      0
+    );
+  }, [planningByMecanicien]);
+
   return (
     <Container className="py-5">
       <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
@@ -132,6 +177,7 @@ function PlanningGarage() {
           <Badge bg="dark">Confirmes: {confirmedAppointments.length}</Badge>
           <Badge bg="secondary">Equipe: {mecaniciens.length}</Badge>
           <Badge bg="info">Occupation: {occupancy}%</Badge>
+          <Badge bg="warning" text="dark">Alertes: {unassignedAppointments.length + appointmentsOutsideAvailabilityCount}</Badge>
         </div>
       </div>
 
@@ -172,8 +218,27 @@ function PlanningGarage() {
         </Alert>
       )}
 
+      {(appointmentsOutsideAvailabilityCount > 0 || mecaniciensWithoutAvailability > 0) && (
+        <Alert variant="warning">
+          <div className="fw-semibold mb-1">Points de vigilance planning</div>
+          <div className="small">
+            {appointmentsOutsideAvailabilityCount > 0
+              ? `${appointmentsOutsideAvailabilityCount} rendez-vous confirme(s) tombent hors des disponibilites definies. `
+              : ''}
+            {mecaniciensWithoutAvailability > 0
+              ? `${mecaniciensWithoutAvailability} mecanicien(s) n ont encore aucun creneau configure.`
+              : ''}
+          </div>
+        </Alert>
+      )}
+
       <Row className="g-4">
-        {planningByMecanicien.map(({ mecanicien, appointments, disponibilites: mecanicienDisponibilites }) => (
+        {planningByMecanicien.map(({
+          mecanicien,
+          appointments,
+          disponibilites: mecanicienDisponibilites,
+          appointmentsOutsideAvailability,
+        }) => (
           <Col md={6} xl={4} key={mecanicien.id}>
             <Card className="shadow-sm border-0 h-100">
               <Card.Body>
@@ -184,9 +249,16 @@ function PlanningGarage() {
                     </Card.Title>
                     <div className="text-muted small">{mecanicien.email || 'Courriel non renseigne'}</div>
                   </div>
-                  <Badge bg={appointments.length > 0 ? 'success' : 'secondary'}>
-                    {appointments.length} RDV
-                  </Badge>
+                  <div className="d-flex flex-column align-items-end gap-2">
+                    <Badge bg={appointments.length > 0 ? 'success' : 'secondary'}>
+                      {appointments.length} RDV
+                    </Badge>
+                    {appointmentsOutsideAvailability.length > 0 && (
+                      <Badge bg="warning" text="dark">
+                        {appointmentsOutsideAvailability.length} hors creneau
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="small text-muted mb-3">
@@ -194,6 +266,14 @@ function PlanningGarage() {
                     ? mecanicienDisponibilites.map((item) => formatTimeRange(item)).join(' | ')
                     : 'Aucune disponibilite mecanicien definie'}
                 </div>
+
+                {appointmentsOutsideAvailability.length > 0 && (
+                  <Alert variant="warning" className="py-2 px-3">
+                    <div className="small">
+                      Certains rendez-vous planifies pour ce mecanicien sont hors de ses creneaux definis.
+                    </div>
+                  </Alert>
+                )}
 
                 {appointments.length > 0 ? (
                   <div className="d-flex flex-column gap-3">

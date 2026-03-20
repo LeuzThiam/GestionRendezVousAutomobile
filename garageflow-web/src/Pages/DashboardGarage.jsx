@@ -14,7 +14,7 @@ import {
   faUserGear,
 } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
-import { fetchGarageMecaniciensRequest } from '../api/mecaniciens';
+import { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } from '../api/mecaniciens';
 import { fetchRendezVousRequest } from '../api/rendezVous';
 import { useAuth } from '../shared/auth/AuthContext';
 import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/rendezVousStatus';
@@ -22,6 +22,7 @@ import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/r
 function DashboardGarage() {
   const { currentGarage, loading, error, user, refreshCurrentGarage } = useAuth();
   const [mecaniciens, setMecaniciens] = useState([]);
+  const [disponibilitesMecaniciens, setDisponibilitesMecaniciens] = useState([]);
   const [rendezVous, setRendezVous] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState(null);
@@ -44,6 +45,7 @@ function DashboardGarage() {
           fetchGarageMecaniciensRequest(),
           fetchRendezVousRequest(),
         ]);
+        const disponibilitesData = await fetchMecanicienDisponibilitesRequest();
 
         if (!mounted) {
           return;
@@ -51,6 +53,7 @@ function DashboardGarage() {
 
         setMecaniciens(mecaniciensData);
         setRendezVous(rendezVousData);
+        setDisponibilitesMecaniciens(disponibilitesData);
       } catch (requestError) {
         if (!mounted) {
           return;
@@ -100,6 +103,21 @@ function DashboardGarage() {
       totalRendezVous: rendezVous.length,
     };
   }, [mecaniciens, rendezVous]);
+
+  const mecaniciensWithoutAvailability = useMemo(() => {
+    if (!mecaniciens.length) {
+      return 0;
+    }
+
+    const mecaniciensWithAvailability = new Set(disponibilitesMecaniciens.map((item) => item.mecanicien));
+    return mecaniciens.filter((item) => !mecaniciensWithAvailability.has(item.id)).length;
+  }, [disponibilitesMecaniciens, mecaniciens]);
+
+  const confirmedWithoutMecanicien = useMemo(() => {
+    return rendezVous.filter((item) => item.status === 'confirmed' && !item.mecanicien).length;
+  }, [rendezVous]);
+
+  const dashboardAlertsCount = mecaniciensWithoutAvailability + confirmedWithoutMecanicien + metrics.modificationCount;
 
   const todayAppointments = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -300,6 +318,10 @@ function DashboardGarage() {
                   <span>Taux confirme</span>
                   <strong>{conversionRate}%</strong>
                 </div>
+                <div>
+                  <span>Alertes</span>
+                  <strong>{dashboardAlertsCount}</strong>
+                </div>
               </div>
             </Card.Body>
           </Card>
@@ -383,12 +405,20 @@ function DashboardGarage() {
                   <strong>{metrics.closedCount}</strong>
                 </div>
                 <div className="dashboard-health-item">
+                  <span>Sans mecanicien</span>
+                  <strong>{confirmedWithoutMecanicien}</strong>
+                </div>
+                <div className="dashboard-health-item">
                   <span>Garage ID</span>
                   <strong>{user?.garage_id || currentGarage?.id || '-'}</strong>
                 </div>
                 <div className="dashboard-health-item">
                   <span>Proprietaire</span>
                   <strong>{user?.first_name || user?.username || '-'}</strong>
+                </div>
+                <div className="dashboard-health-item">
+                  <span>Disponibilites manquantes</span>
+                  <strong>{mecaniciensWithoutAvailability}</strong>
                 </div>
               </div>
 
@@ -400,7 +430,11 @@ function DashboardGarage() {
                 <p className="mb-0">
                   {metrics.pendingCount > 0
                     ? `Traiter ${metrics.pendingCount} demande(s) en attente pour garder un delai de reponse professionnel.`
-                    : "Aucune urgence immediate. Vous pouvez travailler la configuration du garage et l acquisition client."}
+                    : confirmedWithoutMecanicien > 0
+                      ? `${confirmedWithoutMecanicien} rendez-vous confirme(s) doivent encore etre rattaches proprement a un mecanicien.`
+                      : mecaniciensWithoutAvailability > 0
+                        ? `${mecaniciensWithoutAvailability} mecanicien(s) n ont pas encore de disponibilites configurees.`
+                        : "Aucune urgence immediate. Vous pouvez travailler la configuration du garage et l acquisition client."}
                 </p>
               </div>
             </Card.Body>
