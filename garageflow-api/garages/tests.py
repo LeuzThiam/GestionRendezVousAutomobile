@@ -116,9 +116,20 @@ class GarageApiTests(APITestCase):
         ServiceOffert.objects.create(
             garage=garage,
             nom='Vidange',
+            categorie='entretien',
             description='Entretien huile moteur',
             duree_estimee='1.00',
             prix_indicatif='79.99',
+            ordre_affichage=2,
+        )
+        ServiceOffert.objects.create(
+            garage=garage,
+            nom='Diagnostic freinage',
+            categorie='diagnostic',
+            description='Controle plus prioritaire',
+            duree_estimee='0.50',
+            prix_indicatif='39.99',
+            ordre_affichage=1,
         )
         DisponibiliteGarage.objects.create(
             garage=garage,
@@ -134,8 +145,10 @@ class GarageApiTests(APITestCase):
         self.assertEqual(response.data['description'], 'Garage de quartier pour entretien et diagnostics.')
         self.assertEqual(len(response.data['mecaniciens']), 1)
         self.assertEqual(response.data['mecaniciens'][0]['first_name'], 'Jean')
-        self.assertEqual(len(response.data['services']), 1)
-        self.assertEqual(response.data['services'][0]['nom'], 'Vidange')
+        self.assertEqual(len(response.data['services']), 2)
+        self.assertEqual(response.data['services'][0]['nom'], 'Diagnostic freinage')
+        self.assertEqual(response.data['services'][0]['categorie'], 'diagnostic')
+        self.assertEqual(response.data['services'][1]['ordre_affichage'], 2)
         self.assertEqual(len(response.data['disponibilites']), 1)
         self.assertEqual(response.data['disponibilites'][0]['jour_label'], 'Lundi')
 
@@ -201,9 +214,11 @@ class GarageApiTests(APITestCase):
             '/api/garages/me/services/',
             {
                 'nom': 'Diagnostic',
+                'categorie': 'diagnostic',
                 'description': 'Analyse electronique du vehicule',
                 'duree_estimee': '0.75',
                 'prix_indicatif': '49.99',
+                'ordre_affichage': 3,
                 'actif': True,
             },
             format='json',
@@ -211,6 +226,33 @@ class GarageApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(ServiceOffert.objects.filter(garage=garage).count(), 1)
+        self.assertEqual(response.data['categorie'], 'diagnostic')
+        self.assertEqual(response.data['ordre_affichage'], 3)
+
+    def test_owner_cannot_create_service_without_duration_or_price(self):
+        owner = User.objects.create_user(username='owner-service-invalid', password='testpass123')
+        garage = Garage.objects.create(name='Garage Service Invalid', slug='garage-service-invalid', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/garages/me/services/',
+            {
+                'nom': 'Urgence moteur',
+                'categorie': 'urgence',
+                'description': 'Intervention rapide',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('duree_estimee', response.data)
+        self.assertIn('prix_indicatif', response.data)
 
     def test_owner_can_create_disponibilite_for_garage(self):
         owner = User.objects.create_user(username='owner-dispo', password='testpass123')
