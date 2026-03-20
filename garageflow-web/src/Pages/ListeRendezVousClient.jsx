@@ -134,7 +134,7 @@ function ListeRendezVousClient() {
       setLoading(true);
       setError(null);
       await updateRendezVousRequest(selectedRdv.id, {
-        date: `${newDate}T${newHeure}:00`,
+        requested_date: `${newDate}T${newHeure}:00`,
         status: 'modification_requested',
       });
       await fetchRendezVous();
@@ -207,6 +207,13 @@ function ListeRendezVousClient() {
             {remainingLabel && (
               <Alert variant="light" className="py-2 px-3 mb-3">
                 <strong>Prochain rendez-vous :</strong> {remainingLabel}
+              </Alert>
+            )}
+
+            {rdv.status === 'modification_requested' && rdv.requested_date && (
+              <Alert variant="info" className="py-2 px-3 mb-3">
+                <div><strong>Creneau actuel :</strong> {formatDateTime(rdv.date)}</div>
+                <div><strong>Nouveau creneau demande :</strong> {formatDateTime(rdv.requested_date)}</div>
               </Alert>
             )}
 
@@ -367,7 +374,7 @@ function ListeRendezVousClient() {
           {selectedRdv && (
             <Alert variant="light">
               <strong>{selectedRdv.garage_name || 'Garage'}</strong>
-              <div className="small text-muted">{formatDateTime(selectedRdv.date)}</div>
+              <div className="small text-muted">Creneau actuel : {formatDateTime(selectedRdv.date)}</div>
             </Alert>
           )}
 

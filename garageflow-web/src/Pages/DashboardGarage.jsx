@@ -439,6 +439,11 @@ function DashboardGarage() {
               <Button as={Link} to="/garage/mecaniciens" variant="outline-dark">
                 Gerer les mecaniciens
               </Button>
+              <div className="mt-3">
+                <Button as={Link} to="/garage/mecaniciens/disponibilites" variant="outline-secondary">
+                  Definir les disponibilites
+                </Button>
+              </div>
             </Card.Body>
           </Card>
         </Col>

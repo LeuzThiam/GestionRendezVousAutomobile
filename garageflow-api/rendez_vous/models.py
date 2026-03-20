@@ -49,6 +49,7 @@ class RendezVous(models.Model):
         blank=True,
     )
     date = models.DateTimeField(default=timezone.now)
+    requested_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
     description = models.TextField(blank=True)
     reason = models.TextField(blank=True)

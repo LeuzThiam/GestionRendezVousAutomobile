@@ -10,6 +10,8 @@ from .views import (
     MecanicienListView,
     MecanicienManagementView,
     MecanicienDetailView,
+    MecanicienDisponibiliteListCreateView,
+    MecanicienDisponibiliteDetailView,
     UserDetailView  # <-- NOUVEAU
 )
 
@@ -29,6 +31,8 @@ urlpatterns = [
     path('mecaniciens/', MecanicienListView.as_view(), name='mecaniciens-list'),
     path('owner/mecaniciens/', MecanicienManagementView.as_view(), name='owner-mecaniciens'),
     path('owner/mecaniciens/<int:pk>/', MecanicienDetailView.as_view(), name='owner-mecanicien-detail'),
+    path('owner/mecaniciens/disponibilites/', MecanicienDisponibiliteListCreateView.as_view(), name='owner-mecanicien-disponibilites'),
+    path('owner/mecaniciens/disponibilites/<int:pk>/', MecanicienDisponibiliteDetailView.as_view(), name='owner-mecanicien-disponibilite-detail'),
 
     # NOUVEAU : CRUD (RUD) sur un user par son ID
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),

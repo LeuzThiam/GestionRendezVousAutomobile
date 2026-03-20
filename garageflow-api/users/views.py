@@ -17,10 +17,12 @@ from .serializers import (
     MyTokenObtainPairSerializer,
     UserListSerializer,
     MecanicienCreateSerializer,
+    MecanicienDisponibiliteSerializer,
 )
 from .permissions import IsGarageOwner
 from .services import get_user_garage, list_mecaniciens_for_garage
 from garages.models import Garage
+from .models import MecanicienDisponibilite
 
 
 class AuthRegisterView(generics.CreateAPIView):
@@ -161,6 +163,28 @@ class MecanicienDetailView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return list_mecaniciens_for_garage(get_user_garage(self.request.user))
+
+
+class MecanicienDisponibiliteListCreateView(generics.ListCreateAPIView):
+    serializer_class = MecanicienDisponibiliteSerializer
+    permission_classes = [IsAuthenticated, IsGarageOwner]
+
+    def get_queryset(self):
+        garage = get_user_garage(self.request.user)
+        queryset = MecanicienDisponibilite.objects.filter(mecanicien__profile__garage=garage)
+        mecanicien_id = self.request.query_params.get('mecanicien')
+        if mecanicien_id:
+            queryset = queryset.filter(mecanicien_id=mecanicien_id)
+        return queryset
+
+
+class MecanicienDisponibiliteDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = MecanicienDisponibiliteSerializer
+    permission_classes = [IsAuthenticated, IsGarageOwner]
+
+    def get_queryset(self):
+        garage = get_user_garage(self.request.user)
+        return MecanicienDisponibilite.objects.filter(mecanicien__profile__garage=garage)
 
 
 # == NOUVEAU : Lire/Mettre à jour/Supprimer un utilisateur par son ID ==

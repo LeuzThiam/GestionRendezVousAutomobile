@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
-import { fetchGarageMecaniciensRequest } from '../api/mecaniciens';
+import { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } from '../api/mecaniciens';
 import { fetchRendezVousRequest } from '../api/rendezVous';
 import { getRendezVousStatusLabel } from '../utils/rendezVousStatus';
 
@@ -23,9 +23,14 @@ function getDateKey(value) {
   return new Date(value).toISOString().slice(0, 10);
 }
 
+function formatTimeRange(item) {
+  return `${item.jour_label} ${item.heure_debut} - ${item.heure_fin}`;
+}
+
 function PlanningGarage() {
   const [rendezVous, setRendezVous] = useState([]);
   const [mecaniciens, setMecaniciens] = useState([]);
+  const [disponibilites, setDisponibilites] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -41,6 +46,7 @@ function PlanningGarage() {
           fetchRendezVousRequest(),
           fetchGarageMecaniciensRequest(),
         ]);
+        const disponibilitesData = await fetchMecanicienDisponibilitesRequest();
 
         if (!mounted) {
           return;
@@ -48,6 +54,7 @@ function PlanningGarage() {
 
         setRendezVous(rendezVousData);
         setMecaniciens(mecaniciensData);
+        setDisponibilites(disponibilitesData);
       } catch (requestError) {
         if (!mounted) {
           return;
@@ -89,13 +96,15 @@ function PlanningGarage() {
       const mecanicienAppointments = appointmentsForSelectedDate.filter(
         (item) => Number(item.mecanicien) === mecanicien.id
       );
+      const mecanicienDisponibilites = disponibilites.filter((item) => item.mecanicien === mecanicien.id);
 
       return {
         mecanicien,
         appointments: mecanicienAppointments,
+        disponibilites: mecanicienDisponibilites,
       };
     });
-  }, [appointmentsForSelectedDate, mecaniciens]);
+  }, [appointmentsForSelectedDate, disponibilites, mecaniciens]);
 
   const unassignedAppointments = useMemo(() => {
     return appointmentsForSelectedDate.filter((item) => !item.mecanicien);
@@ -164,7 +173,7 @@ function PlanningGarage() {
       )}
 
       <Row className="g-4">
-        {planningByMecanicien.map(({ mecanicien, appointments }) => (
+        {planningByMecanicien.map(({ mecanicien, appointments, disponibilites: mecanicienDisponibilites }) => (
           <Col md={6} xl={4} key={mecanicien.id}>
             <Card className="shadow-sm border-0 h-100">
               <Card.Body>
@@ -178,6 +187,12 @@ function PlanningGarage() {
                   <Badge bg={appointments.length > 0 ? 'success' : 'secondary'}>
                     {appointments.length} RDV
                   </Badge>
+                </div>
+
+                <div className="small text-muted mb-3">
+                  {mecanicienDisponibilites.length > 0
+                    ? mecanicienDisponibilites.map((item) => formatTimeRange(item)).join(' | ')
+                    : 'Aucune disponibilite mecanicien definie'}
                 </div>
 
                 {appointments.length > 0 ? (

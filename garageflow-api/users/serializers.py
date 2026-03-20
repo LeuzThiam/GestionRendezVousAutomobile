@@ -3,7 +3,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Profile
+from .models import MecanicienDisponibilite, Profile
 from garages.models import Garage
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -283,10 +283,11 @@ class UserListSerializer(serializers.ModelSerializer):
     """
     role = serializers.CharField(source='profile.role', read_only=True)
     garage_id = serializers.IntegerField(source='profile.garage_id', read_only=True)
+    disponibilites_count = serializers.IntegerField(source='disponibilites.count', read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'garage_id']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'role', 'garage_id', 'disponibilites_count']
 
 
 class MecanicienCreateSerializer(serializers.ModelSerializer):
@@ -309,6 +310,50 @@ class MecanicienCreateSerializer(serializers.ModelSerializer):
         validated_data.pop('password2')
 
         return create_mecanicien_for_garage(garage=self.context['garage'], password=password, **validated_data)
+
+
+class MecanicienDisponibiliteSerializer(serializers.ModelSerializer):
+    jour_label = serializers.CharField(source='get_jour_semaine_display', read_only=True)
+    mecanicien_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MecanicienDisponibilite
+        fields = [
+            'id',
+            'mecanicien',
+            'mecanicien_name',
+            'jour_semaine',
+            'jour_label',
+            'heure_debut',
+            'heure_fin',
+            'actif',
+        ]
+        read_only_fields = ['id', 'jour_label', 'mecanicien_name']
+
+    def get_mecanicien_name(self, obj):
+        full_name = f"{obj.mecanicien.first_name or ''} {obj.mecanicien.last_name or ''}".strip()
+        return full_name or obj.mecanicien.username
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        mecanicien = attrs.get('mecanicien', getattr(self.instance, 'mecanicien', None))
+
+        if mecanicien is None:
+            raise serializers.ValidationError({'mecanicien': "Le mecanicien est requis."})
+
+        if getattr(getattr(mecanicien, 'profile', None), 'role', None) != 'mecanicien':
+            raise serializers.ValidationError({'mecanicien': "L'utilisateur choisi doit etre un mecanicien."})
+
+        owner_garage = getattr(getattr(request.user, 'profile', None), 'garage', None) if request else None
+        if getattr(getattr(mecanicien, 'profile', None), 'garage_id', None) != getattr(owner_garage, 'id', None):
+            raise serializers.ValidationError({'mecanicien': "Le mecanicien doit appartenir a votre garage."})
+
+        heure_debut = attrs.get('heure_debut', getattr(self.instance, 'heure_debut', None))
+        heure_fin = attrs.get('heure_fin', getattr(self.instance, 'heure_fin', None))
+        if heure_debut and heure_fin and heure_debut >= heure_fin:
+            raise serializers.ValidationError({'heure_fin': "L'heure de fin doit etre apres l'heure de debut."})
+
+        return attrs
 
 
 # -- Optionnel: Un Serializer plus complet pour le CRUD d'un user --

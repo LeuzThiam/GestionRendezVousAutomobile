@@ -8,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from garages.models import DisponibiliteGarage, Garage, ServiceOffert
 from rendez_vous.models import RendezVous
+from users.models import MecanicienDisponibilite
 from vehicules.models import Vehicule
 
 
@@ -244,6 +245,38 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('status', response.data)
 
+    def test_client_modification_request_keeps_original_date_and_stores_requested_date(self):
+        initial_date = self.build_local_datetime(days=2, hour=10)
+        requested_date = self.build_local_datetime(days=4, hour=14)
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            mecanicien=self.mecanicien,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=initial_date,
+            status='confirmed',
+            estimatedTime='1.00',
+            quote='100.00',
+            description='Modification client',
+        )
+        self.authenticate(self.client_user)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'modification_requested',
+                'requested_date': requested_date.isoformat(),
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rdv.refresh_from_db()
+        self.assertEqual(rdv.status, 'modification_requested')
+        self.assert_same_minute(rdv.date, initial_date)
+        self.assert_same_minute(rdv.requested_date, requested_date)
+
     def test_mecanicien_must_provide_quote_and_duration_when_confirming(self):
         rdv = RendezVous.objects.create(
             garage=self.garage,
@@ -342,6 +375,38 @@ class RendezVousApiTests(APITestCase):
         self.assertEqual(rdv.status, 'confirmed')
         self.assert_same_minute(rdv.date, updated_date)
 
+    def test_owner_can_accept_requested_date_without_resending_date(self):
+        initial_date = self.build_local_datetime(days=2, hour=10)
+        requested_date = self.build_local_datetime(days=5, hour=11)
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=initial_date,
+            requested_date=requested_date,
+            status='modification_requested',
+            description='Reprogrammation propre',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '2.00',
+                'quote': '150.00',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        rdv.refresh_from_db()
+        self.assertEqual(rdv.status, 'confirmed')
+        self.assert_same_minute(rdv.date, requested_date)
+        self.assertIsNone(rdv.requested_date)
+
     def test_owner_cannot_confirm_without_mecanicien(self):
         rdv = RendezVous.objects.create(
             garage=self.garage,
@@ -422,6 +487,38 @@ class RendezVousApiTests(APITestCase):
                 'estimatedTime': '1.00',
                 'quote': '90.00',
                 'date': slot.isoformat(),
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('mecanicien', response.data)
+
+    def test_owner_cannot_confirm_outside_mecanicien_availability(self):
+        MecanicienDisponibilite.objects.create(
+            mecanicien=self.mecanicien,
+            jour_semaine=self.build_local_datetime(days=2, hour=10).weekday(),
+            heure_debut='08:00',
+            heure_fin='09:00',
+        )
+        rdv = RendezVous.objects.create(
+            garage=self.garage,
+            client=self.client_user,
+            vehicule=self.vehicle,
+            service=self.service,
+            date=self.build_local_datetime(days=2, hour=10),
+            description='Verification disponibilite mecanicien',
+        )
+        self.authenticate(self.garage.owner)
+
+        response = self.client.patch(
+            f'/api/rendezvous/{rdv.id}/',
+            {
+                'status': 'confirmed',
+                'mecanicien': self.mecanicien.id,
+                'estimatedTime': '1.00',
+                'quote': '90.00',
+                'date': self.build_local_datetime(days=2, hour=10).isoformat(),
             },
             format='json',
         )

@@ -4,6 +4,7 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from garages.models import Garage
+from users.models import MecanicienDisponibilite
 
 
 class UsersApiTests(APITestCase):
@@ -231,3 +232,77 @@ class UsersApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_can_create_mecanicien_disponibilite(self):
+        owner = User.objects.create_user(username='owner-disp', password='testpass123')
+        garage = Garage.objects.create(name='Garage Disp', slug='garage-disp', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-disp', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/users/owner/mecaniciens/disponibilites/',
+            {
+                'mecanicien': mecanicien.id,
+                'jour_semaine': 1,
+                'heure_debut': '09:00',
+                'heure_fin': '17:00',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(MecanicienDisponibilite.objects.filter(mecanicien=mecanicien).count(), 1)
+
+    def test_owner_can_list_only_garage_mecanicien_disponibilites(self):
+        owner = User.objects.create_user(username='owner-list-disp', password='testpass123')
+        other_owner = User.objects.create_user(username='owner-list-other', password='testpass123')
+        garage = Garage.objects.create(name='Garage List Disp', slug='garage-list-disp', owner=owner)
+        other_garage = Garage.objects.create(name='Garage List Other', slug='garage-list-other', owner=other_owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+        other_owner.profile.role = 'owner'
+        other_owner.profile.garage = other_garage
+        other_owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-list-a', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        other_mecanicien = User.objects.create_user(username='meca-list-b', password='testpass123')
+        other_mecanicien.profile.role = 'mecanicien'
+        other_mecanicien.profile.garage = other_garage
+        other_mecanicien.profile.save()
+
+        MecanicienDisponibilite.objects.create(
+            mecanicien=mecanicien,
+            jour_semaine=0,
+            heure_debut='08:00',
+            heure_fin='12:00',
+        )
+        MecanicienDisponibilite.objects.create(
+            mecanicien=other_mecanicien,
+            jour_semaine=2,
+            heure_debut='10:00',
+            heure_fin='14:00',
+        )
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.get('/api/users/owner/mecaniciens/disponibilites/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['mecanicien'], mecanicien.id)

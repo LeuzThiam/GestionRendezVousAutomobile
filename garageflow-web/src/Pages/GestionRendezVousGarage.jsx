@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
-import { fetchGarageMecaniciensRequest } from '../api/mecaniciens';
+import { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } from '../api/mecaniciens';
 import { fetchRendezVousRequest, updateRendezVousRequest } from '../api/rendezVous';
 import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/rendezVousStatus';
 
@@ -28,9 +28,14 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
+function formatTimeRange(item) {
+  return `${item.jour_label} ${item.heure_debut} - ${item.heure_fin}`;
+}
+
 function GestionRendezVousGarage() {
   const [rendezVous, setRendezVous] = useState([]);
   const [mecaniciens, setMecaniciens] = useState([]);
+  const [mecanicienDisponibilites, setMecanicienDisponibilites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
@@ -40,22 +45,25 @@ function GestionRendezVousGarage() {
     try {
       setLoading(true);
       setError(null);
-      const [rendezVousData, mecaniciensData] = await Promise.all([
+      const [rendezVousData, mecaniciensData, disponibilitesData] = await Promise.all([
         fetchRendezVousRequest(),
         fetchGarageMecaniciensRequest(),
+        fetchMecanicienDisponibilitesRequest(),
       ]);
       setRendezVous(rendezVousData);
       setMecaniciens(mecaniciensData);
+      setMecanicienDisponibilites(disponibilitesData);
       setForms((current) => {
         const next = { ...current };
         rendezVousData.forEach((item) => {
+          const selectedDate = item.requested_date || item.date;
           next[item.id] ??= {
             mecanicien: item.mecanicien || '',
             estimatedTime: item.estimatedTime || '',
             quote: item.quote || '',
             reason: item.reason || '',
-            date: item.date ? item.date.slice(0, 10) : '',
-            heure: item.date ? item.date.slice(11, 16) : '',
+            date: selectedDate ? selectedDate.slice(0, 10) : '',
+            heure: selectedDate ? selectedDate.slice(11, 16) : '',
           };
         });
         return next;
@@ -72,7 +80,11 @@ function GestionRendezVousGarage() {
   }, []);
 
   const pendingRendezVous = useMemo(
-    () => rendezVous.filter((item) => item.status === 'pending' || item.status === 'modification_requested'),
+    () => rendezVous.filter((item) => item.status === 'pending'),
+    [rendezVous]
+  );
+  const modificationRequestedRendezVous = useMemo(
+    () => rendezVous.filter((item) => item.status === 'modification_requested'),
     [rendezVous]
   );
   const confirmedRendezVous = useMemo(
@@ -83,6 +95,14 @@ function GestionRendezVousGarage() {
     () => rendezVous.filter((item) => ['rejected', 'cancelled', 'done'].includes(item.status)),
     [rendezVous]
   );
+
+  const disponibilitesByMecanicien = useMemo(() => {
+    return mecanicienDisponibilites.reduce((accumulator, item) => {
+      accumulator[item.mecanicien] ??= [];
+      accumulator[item.mecanicien].push(item);
+      return accumulator;
+    }, {});
+  }, [mecanicienDisponibilites]);
 
   const handleFieldChange = (id, field, value) => {
     setForms((current) => ({
@@ -96,6 +116,12 @@ function GestionRendezVousGarage() {
 
   const handleConfirm = async (rdv) => {
     const currentForm = forms[rdv.id] || {};
+    const proposedDate =
+      currentForm.date && currentForm.heure
+        ? `${currentForm.date}T${currentForm.heure}:00`
+        : (rdv.requested_date || rdv.date);
+    const slotChanged = proposedDate !== (rdv.requested_date || rdv.date);
+
     try {
       setLoading(true);
       setError(null);
@@ -105,10 +131,14 @@ function GestionRendezVousGarage() {
         mecanicien: Number(currentForm.mecanicien),
         estimatedTime: currentForm.estimatedTime,
         quote: currentForm.quote,
-        date: currentForm.date && currentForm.heure ? `${currentForm.date}T${currentForm.heure}:00` : rdv.date,
+        date: proposedDate,
       });
       setRendezVous((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      setMessage('Rendez-vous confirme et affecte.');
+      if (rdv.status === 'modification_requested') {
+        setMessage(slotChanged ? 'Rendez-vous reprogramme et confirme.' : 'Nouvelle proposition client acceptee.');
+      } else {
+        setMessage('Rendez-vous confirme et affecte.');
+      }
     } catch (requestError) {
       setError(requestError.response?.data || requestError);
     } finally {
@@ -118,16 +148,22 @@ function GestionRendezVousGarage() {
 
   const handleReject = async (rdv) => {
     const currentForm = forms[rdv.id] || {};
+    const nextStatus = rdv.status === 'modification_requested' ? 'confirmed' : 'rejected';
     try {
       setLoading(true);
       setError(null);
       setMessage(null);
       const updated = await updateRendezVousRequest(rdv.id, {
-        status: 'rejected',
+        status: nextStatus,
         reason: currentForm.reason,
+        ...(rdv.status === 'modification_requested' ? { date: rdv.date } : {}),
       });
       setRendezVous((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      setMessage('Demande refusee.');
+      setMessage(
+        rdv.status === 'modification_requested'
+          ? 'Demande de reprogrammation refusee. Le creneau actuel est conserve.'
+          : 'Demande refusee.'
+      );
     } catch (requestError) {
       setError(requestError.response?.data || requestError);
     } finally {
@@ -152,6 +188,20 @@ function GestionRendezVousGarage() {
 
   const renderCard = (rdv, showActions) => {
     const currentForm = forms[rdv.id] || {};
+    const selectedMecanicienId = Number(currentForm.mecanicien || rdv.mecanicien || 0);
+    const selectedDisponibilites = selectedMecanicienId
+      ? (disponibilitesByMecanicien[selectedMecanicienId] || [])
+      : [];
+    const isModificationRequest = rdv.status === 'modification_requested';
+    const selectedSlot = currentForm.date && currentForm.heure
+      ? `${currentForm.date}T${currentForm.heure}:00`
+      : (rdv.requested_date || rdv.date);
+    const slotChanged = selectedSlot !== (rdv.requested_date || rdv.date);
+    const confirmLabel = isModificationRequest
+      ? slotChanged
+        ? 'Reprogrammer et confirmer'
+        : 'Accepter la proposition'
+      : 'Confirmer';
 
     return (
       <Col md={6} xl={4} key={rdv.id}>
@@ -160,7 +210,9 @@ function GestionRendezVousGarage() {
             <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
               <div>
                 <Card.Title className="mb-1">{formatDateTime(rdv.date)}</Card.Title>
-                <div className="text-muted small">{getRendezVousStatusLabel(rdv.status)}</div>
+                <div className="text-muted small">
+                  {isModificationRequest ? 'Creneau actuellement planifie' : getRendezVousStatusLabel(rdv.status)}
+                </div>
               </div>
               <Badge bg={getRendezVousStatusVariant(rdv.status)}>
                 {getRendezVousStatusLabel(rdv.status)}
@@ -173,6 +225,21 @@ function GestionRendezVousGarage() {
             <p className="mb-2"><strong>Service :</strong> {rdv.service_details?.nom || '-'}</p>
             <p className="mb-2"><strong>Vehicule :</strong> {rdv.vehicle ? `${rdv.vehicle.marque} ${rdv.vehicle.modele}` : '-'}</p>
             <p className="mb-3"><strong>Demande :</strong> {rdv.description || 'Sans description'}</p>
+
+            {isModificationRequest && (
+              <Alert variant="info" className="mb-3">
+                <div className="fw-semibold mb-1">Demande de reprogrammation</div>
+                <div className="small">
+                  Creneau actuel : <strong>{formatDateTime(rdv.date)}</strong>
+                </div>
+                <div className="small mt-1">
+                  Proposition du client : <strong>{formatDateTime(rdv.requested_date)}</strong>
+                </div>
+                <div className="small mt-1">
+                  Vous pouvez accepter ce creneau tel quel ou en definir un autre avant confirmation.
+                </div>
+              </Alert>
+            )}
 
             {rdv.mecanicien && (
               <p className="mb-2"><strong>Mecanicien affecte :</strong> #{rdv.mecanicien}</p>
@@ -204,10 +271,27 @@ function GestionRendezVousGarage() {
                   </Form.Select>
                 </Form.Group>
 
+                {selectedMecanicienId > 0 && (
+                  <Alert variant={selectedDisponibilites.length > 0 ? 'light' : 'warning'} className="mb-3">
+                    <div className="fw-semibold mb-2">Disponibilites du mecanicien</div>
+                    {selectedDisponibilites.length > 0 ? (
+                      <div className="small d-flex flex-column gap-1">
+                        {selectedDisponibilites.map((item) => (
+                          <span key={item.id}>{formatTimeRange(item)}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="small">
+                        Aucun creneau defini. Le systeme autorise encore la confirmation, mais il vaut mieux definir ses disponibilites.
+                      </div>
+                    )}
+                  </Alert>
+                )}
+
                 <Row>
                   <Col sm={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Date planifiee</Form.Label>
+                      <Form.Label>{isModificationRequest ? 'Date retenue' : 'Date planifiee'}</Form.Label>
                       <Form.Control
                         type="date"
                         value={currentForm.date || ''}
@@ -218,7 +302,7 @@ function GestionRendezVousGarage() {
 
                   <Col sm={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Heure planifiee</Form.Label>
+                      <Form.Label>{isModificationRequest ? 'Heure retenue' : 'Heure planifiee'}</Form.Label>
                       <Form.Control
                         type="time"
                         value={currentForm.heure || ''}
@@ -227,6 +311,14 @@ function GestionRendezVousGarage() {
                     </Form.Group>
                   </Col>
                 </Row>
+
+                {isModificationRequest && slotChanged && (
+                  <Alert variant="light" className="mb-3">
+                    <div className="small">
+                      Le creneau actuellement saisi pour confirmation est : <strong>{formatDateTime(selectedSlot)}</strong>
+                    </div>
+                  </Alert>
+                )}
 
                 <Row>
                   <Col sm={6}>
@@ -253,28 +345,27 @@ function GestionRendezVousGarage() {
                 </Row>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Raison du refus</Form.Label>
+                  <Form.Label>{isModificationRequest ? 'Note interne optionnelle' : 'Raison du refus'}</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={2}
                     value={currentForm.reason || ''}
                     onChange={(event) => handleFieldChange(rdv.id, 'reason', event.target.value)}
-                    placeholder="Precisez la raison si vous refusez la demande"
+                    placeholder={
+                      isModificationRequest
+                        ? 'Ajoutez une note si vous conservez le creneau actuel'
+                        : 'Precisez la raison si vous refusez la demande'
+                    }
                   />
                 </Form.Group>
 
                 <div className="d-flex flex-wrap gap-2">
                   <Button variant="success" onClick={() => handleConfirm(rdv)} disabled={loading}>
-                    Confirmer
+                    {confirmLabel}
                   </Button>
                   <Button variant="outline-danger" onClick={() => handleReject(rdv)} disabled={loading}>
-                    Refuser
+                    {isModificationRequest ? 'Conserver le creneau actuel' : 'Refuser'}
                   </Button>
-                  {rdv.status === 'confirmed' && (
-                    <Button variant="outline-dark" onClick={() => handleDone(rdv)} disabled={loading}>
-                      Marquer termine
-                    </Button>
-                  )}
                 </div>
               </>
             )}
@@ -316,6 +407,21 @@ function GestionRendezVousGarage() {
         {pendingRendezVous.length === 0 && (
           <Card className="shadow-sm">
             <Card.Body>Aucune demande en attente pour le moment.</Card.Body>
+          </Card>
+        )}
+      </section>
+
+      <section className="mb-5">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="h4 mb-0">Demandes de reprogrammation</h2>
+          <Badge bg="info">{modificationRequestedRendezVous.length}</Badge>
+        </div>
+        <Row className="g-4">
+          {modificationRequestedRendezVous.map((rdv) => renderCard(rdv, true))}
+        </Row>
+        {modificationRequestedRendezVous.length === 0 && (
+          <Card className="shadow-sm">
+            <Card.Body>Aucune demande de reprogrammation pour le moment.</Card.Body>
           </Card>
         )}
       </section>

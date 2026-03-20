@@ -23,6 +23,7 @@ import Connexion from "./Pages/Connexion.jsx";
 import DashboardGarage from "./Pages/DashboardGarage.jsx";
 import GestionDisponibilitesGarage from "./Pages/GestionDisponibilitesGarage.jsx";
 import GestionMecaniciensGarage from "./Pages/GestionMecaniciensGarage.jsx";
+import GestionDisponibilitesMecaniciensGarage from "./Pages/GestionDisponibilitesMecaniciensGarage.jsx";
 import GestionProfilGarage from "./Pages/GestionProfilGarage.jsx";
 import GestionRendezVousGarage from "./Pages/GestionRendezVousGarage.jsx";
 import GestionServicesGarage from "./Pages/GestionServicesGarage.jsx";
@@ -72,6 +73,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["owner"]}>
                 <GestionMecaniciensGarage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/garage/mecaniciens/disponibilites"
+            element={
+              <ProtectedRoute allowedRoles={["owner"]}>
+                <GestionDisponibilitesMecaniciensGarage />
               </ProtectedRoute>
             }
           />

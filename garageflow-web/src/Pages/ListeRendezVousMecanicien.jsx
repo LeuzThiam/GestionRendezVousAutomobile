@@ -139,9 +139,7 @@ function ListeRendezVousMecanicien() {
 
     try {
       setLoading(true);
-      // On repasse le statut à "confirmed" (et on garde la date modifiée par le client)
       await updateRendezVousRequest(selectedRdv.id, {
-        date: selectedRdv.date,
         status: 'confirmed',
       });
 
@@ -174,6 +172,7 @@ function ListeRendezVousMecanicien() {
       // Annuler la modif => re-statut 'confirmed'
       await updateRendezVousRequest(selectedRdv.id, {
         status: 'confirmed',
+        date: selectedRdv.date,
       });
 
       setRendezVousList((prev) =>
@@ -246,7 +245,8 @@ function ListeRendezVousMecanicien() {
               <Card.Body>
                 <p><strong>Statut :</strong> {getRendezVousStatusLabel(rdv.status)}</p>
                 <p><strong>Symptômes:</strong> {rdv.description || 'Aucune description'}</p>
-                <p><em>Le client propose une nouvelle date/heure</em></p>
+                <p><strong>Creneau actuel :</strong> {formatDateTime(rdv.date)}</p>
+                <p><strong>Proposition client :</strong> {formatDateTime(rdv.requested_date)}</p>
                 <div className="d-flex justify-content-between">
                   <Button variant="success" onClick={() => handleCheckModification(rdv)}>
                     Voir détails
@@ -337,10 +337,13 @@ function ListeRendezVousMecanicien() {
           {selectedRdv && (
             <>
               <p>
-                <strong>Nouvelle Date/Heure proposée :</strong> {formatDateTime(selectedRdv.date)}
+                <strong>Creneau actuel :</strong> {formatDateTime(selectedRdv.date)}
               </p>
               <p>
-                <em>Si vous acceptez, la date du RDV passera à ce nouveau créneau.</em>
+                <strong>Nouvelle Date/Heure proposée :</strong> {formatDateTime(selectedRdv.requested_date)}
+              </p>
+              <p>
+                <em>Si vous acceptez, le rendez-vous prendra le créneau demandé par le client.</em>
               </p>
             </>
           )}
