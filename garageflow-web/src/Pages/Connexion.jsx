@@ -4,7 +4,7 @@ import { Formik } from 'formik';
 import { useNavigate } from 'react-router-dom';
 import { Form, Button, Container, Row, Col, Alert } from 'react-bootstrap';
 import { loginRequest } from '../api/auth';
-import { useAuth } from '../shared/auth/AuthContext';
+import { useAuth } from '../shared/auth';
 
 function Connexion() {
   const [errorMessage, setErrorMessage] = useState(null);

@@ -14,6 +14,7 @@ const initialValues = {
   garage_slug: '',
   phone: '',
   address: '',
+  description: '',
   username: '',
   first_name: '',
   last_name: '',
@@ -65,10 +66,6 @@ function Inscription() {
                   errors.garage_name = 'Requis';
                 }
 
-                if (!isOwner && !values.garage_slug) {
-                  errors.garage_slug = 'Requis';
-                }
-
                 if (!values.username) {
                   errors.username = 'Requis';
                 }
@@ -115,6 +112,7 @@ function Inscription() {
                       garage_slug: values.garage_slug,
                       phone: values.phone,
                       address: values.address,
+                      description: values.description,
                       username: values.username,
                       first_name: values.first_name,
                       last_name: values.last_name,
@@ -123,7 +121,6 @@ function Inscription() {
                       password2: values.password2,
                     })
                   : registerClientRequest({
-                      garage_slug: values.garage_slug,
                       username: values.username,
                       first_name: values.first_name,
                       last_name: values.last_name,
@@ -235,26 +232,25 @@ function Inscription() {
                             onBlur={handleBlur}
                           />
                         </Form.Group>
+
+                        <Form.Group controlId="formGarageDescription" className="mb-3">
+                          <Form.Label>Description du garage</Form.Label>
+                          <Form.Control
+                            as="textarea"
+                            rows={3}
+                            name="description"
+                            placeholder="Presentez votre garage, vos specialites ou votre approche client"
+                            value={values.description}
+                            onChange={handleChange}
+                            onBlur={handleBlur}
+                          />
+                        </Form.Group>
                       </>
                     ) : (
-                      <Form.Group controlId="formGarageSlugClient" className="mb-3">
-                        <Form.Label>Slug du garage</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="garage_slug"
-                          placeholder="garage-flow-montreal"
-                          value={values.garage_slug}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          isInvalid={touched.garage_slug && errors.garage_slug}
-                        />
-                        <Form.Text className="text-muted">
-                          Utilisez le slug public du garage auquel vous souhaitez etre rattache.
-                        </Form.Text>
-                        <Form.Control.Feedback type="invalid">
-                          {errors.garage_slug}
-                        </Form.Control.Feedback>
-                      </Form.Group>
+                      <Alert variant="info" className="mb-3">
+                        Le compte client est autonome. Vous pourrez chercher un garage et prendre
+                        rendez-vous plus tard depuis votre espace.
+                      </Alert>
                     )}
 
                     <Form.Group controlId="formUsername" className="mb-3">

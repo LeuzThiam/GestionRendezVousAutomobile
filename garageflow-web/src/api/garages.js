@@ -5,6 +5,18 @@ export async function fetchCurrentGarageRequest() {
   return response.data;
 }
 
+export async function updateCurrentGarageRequest(payload) {
+  const response = await apiClient.patch('/api/garages/me/', payload);
+  return response.data;
+}
+
+export async function fetchPublicGaragesRequest(query = '') {
+  const response = await apiClient.get('/api/garages/public/', {
+    params: query ? { q: query } : undefined,
+  });
+  return response.data;
+}
+
 export async function fetchPublicGarageRequest(slug) {
   const response = await apiClient.get(`/api/garages/public/${slug}/`);
   return response.data;

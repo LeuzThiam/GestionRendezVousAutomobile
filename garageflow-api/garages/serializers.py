@@ -1,7 +1,9 @@
 from django.contrib.auth.models import User
-from rest_framework import serializers
 from django.utils.text import slugify
+from rest_framework import serializers
 
+from planification.serializers import DisponibiliteGarageSerializer, FermetureExceptionnelleGarageSerializer
+from prestations.serializers import PublicServiceOffertSerializer
 from .models import Garage
 
 
@@ -23,6 +25,7 @@ class GarageSerializer(serializers.ModelSerializer):
             'slug',
             'phone',
             'address',
+            'description',
             'is_active',
             'owner_id',
             'owner_username',
@@ -33,10 +36,13 @@ class GarageSerializer(serializers.ModelSerializer):
 
 class PublicGarageSerializer(serializers.ModelSerializer):
     mecaniciens = serializers.SerializerMethodField()
+    services = serializers.SerializerMethodField()
+    disponibilites = serializers.SerializerMethodField()
+    fermetures_exceptionnelles = serializers.SerializerMethodField()
 
     class Meta:
         model = Garage
-        fields = ['id', 'name', 'slug', 'phone', 'address', 'mecaniciens']
+        fields = ['id', 'name', 'slug', 'phone', 'address', 'description', 'mecaniciens', 'services', 'disponibilites', 'fermetures_exceptionnelles']
 
     def get_mecaniciens(self, obj):
         mecaniciens = User.objects.filter(profile__role='mecanicien', profile__garage=obj).values(
@@ -46,12 +52,51 @@ class PublicGarageSerializer(serializers.ModelSerializer):
         )
         return PublicMecanicienSerializer(mecaniciens, many=True).data
 
+    def get_services(self, obj):
+        services = obj.services.filter(actif=True)
+        return PublicServiceOffertSerializer(services, many=True).data
+
+    def get_disponibilites(self, obj):
+        disponibilites = obj.disponibilites.filter(actif=True)
+        return DisponibiliteGarageSerializer(disponibilites, many=True).data
+
+    def get_fermetures_exceptionnelles(self, obj):
+        fermetures = obj.fermetures_exceptionnelles.filter(actif=True)
+        return FermetureExceptionnelleGarageSerializer(fermetures, many=True).data
+
+
+class PublicGarageListSerializer(serializers.ModelSerializer):
+    mecaniciens_count = serializers.IntegerField(read_only=True)
+    services = serializers.SerializerMethodField()
+    disponibilites_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Garage
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'phone',
+            'address',
+            'description',
+            'mecaniciens_count',
+            'services',
+            'disponibilites_count',
+        ]
+
+    def get_services(self, obj):
+        return list(obj.services.filter(actif=True).values_list('nom', flat=True))
+
+    def get_disponibilites_count(self, obj):
+        return obj.disponibilites.filter(actif=True).count()
+
 
 class GarageRegistrationSerializer(serializers.Serializer):
     garage_name = serializers.CharField(max_length=150)
     garage_slug = serializers.SlugField(max_length=160, required=False, allow_blank=True)
     phone = serializers.CharField(max_length=30, required=False, allow_blank=True)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    description = serializers.CharField(required=False, allow_blank=True)
     username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     first_name = serializers.CharField(max_length=150)
@@ -78,6 +123,7 @@ class GarageRegistrationSerializer(serializers.Serializer):
         garage_slug = validated_data.pop('garage_slug', '')
         phone = validated_data.pop('phone', '')
         address = validated_data.pop('address', '')
+        description = validated_data.pop('description', '')
         password = validated_data.pop('password')
         validated_data.pop('password2')
 
@@ -91,6 +137,7 @@ class GarageRegistrationSerializer(serializers.Serializer):
             owner=user,
             phone=phone,
             address=address,
+            description=description,
         )
 
         profile = user.profile

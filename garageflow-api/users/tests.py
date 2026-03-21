@@ -1,9 +1,13 @@
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from garages.models import Garage
+from personnel.models import MecanicienDisponibilite
+from rendez_vous.models import RendezVous
 
 
 class UsersApiTests(APITestCase):
@@ -31,16 +35,9 @@ class UsersApiTests(APITestCase):
         self.assertEqual(owner.profile.garage.slug, 'garage-owner-test')
 
     def test_auth_client_register_creates_client_in_existing_garage(self):
-        owner = User.objects.create_user(username='owner-register-client', password='testpass123')
-        garage = Garage.objects.create(name='Garage Client Test', slug='garage-client-test', owner=owner)
-        owner.profile.role = 'owner'
-        owner.profile.garage = garage
-        owner.profile.save()
-
         response = self.client.post(
             '/api/auth/register/client/',
             {
-                'garage_slug': 'garage-client-test',
                 'username': 'client-register',
                 'email': 'client-register@example.com',
                 'first_name': 'Client',
@@ -54,15 +51,16 @@ class UsersApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         client = User.objects.get(username='client-register')
         self.assertEqual(client.profile.role, 'client')
-        self.assertEqual(client.profile.garage, garage)
+        self.assertIsNone(client.profile.garage)
 
-    def test_auth_client_register_rejects_unknown_garage_slug(self):
+    def test_auth_client_register_requires_unique_identity(self):
+        User.objects.create_user(username='existing-client', email='client-existing@example.com', password='testpass123')
+
         response = self.client.post(
             '/api/auth/register/client/',
             {
-                'garage_slug': 'garage-inconnu',
-                'username': 'client-invalid',
-                'email': 'client-invalid@example.com',
+                'username': 'existing-client',
+                'email': 'client-existing@example.com',
                 'first_name': 'Client',
                 'last_name': 'Invalid',
                 'password': 'Testpass1234!',
@@ -72,7 +70,7 @@ class UsersApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('garage_slug', response.data)
+        self.assertIn('username', response.data)
 
     def test_auth_login_returns_tokens_and_user_for_valid_credentials(self):
         user = User.objects.create_user(
@@ -200,6 +198,7 @@ class UsersApiTests(APITestCase):
                 'email': 'meca-c@example.com',
                 'password': 'testpass123',
                 'password2': 'testpass123',
+                'specialites': 'Freinage, diagnostic',
             },
             format='json',
         )
@@ -208,6 +207,69 @@ class UsersApiTests(APITestCase):
         mecanicien = User.objects.get(username='meca-c')
         self.assertEqual(mecanicien.profile.role, 'mecanicien')
         self.assertEqual(mecanicien.profile.garage, garage)
+        self.assertEqual(mecanicien.profile.specialites, 'Freinage, diagnostic')
+
+    def test_owner_can_update_mecanicien_status_and_specialites(self):
+        owner = User.objects.create_user(username='owner-update-meca', password='testpass123')
+        garage = Garage.objects.create(name='Garage Update Meca', slug='garage-update-meca', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-update', password='testpass123', email='meca-update@example.com')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.patch(
+            f'/api/users/owner/mecaniciens/{mecanicien.id}/',
+            {
+                'is_active': False,
+                'specialites': 'Moteur, climatisation',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mecanicien.refresh_from_db()
+        self.assertFalse(mecanicien.is_active)
+        self.assertEqual(mecanicien.profile.specialites, 'Moteur, climatisation')
+
+    def test_owner_cannot_delete_mecanicien_with_upcoming_rendezvous(self):
+        owner = User.objects.create_user(username='owner-del-meca', password='testpass123')
+        garage = Garage.objects.create(name='Garage Delete Meca', slug='garage-delete-meca', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-del', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        client = User.objects.create_user(username='client-del', password='testpass123')
+        client.profile.role = 'client'
+        client.profile.save()
+
+        RendezVous.objects.create(
+            garage=garage,
+            client=client,
+            mecanicien=mecanicien,
+            date=timezone.now() + timedelta(days=2),
+            status='confirmed',
+            description='Controle futur',
+        )
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.delete(f'/api/users/owner/mecaniciens/{mecanicien.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(User.objects.filter(id=mecanicien.id).exists())
 
     def test_non_owner_cannot_create_mecanicien(self):
         owner = User.objects.create_user(username='owner-d', password='testpass123')
@@ -237,3 +299,114 @@ class UsersApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_can_create_mecanicien_disponibilite(self):
+        owner = User.objects.create_user(username='owner-disp', password='testpass123')
+        garage = Garage.objects.create(name='Garage Disp', slug='garage-disp', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-disp', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/users/owner/mecaniciens/disponibilites/',
+            {
+                'mecanicien': mecanicien.id,
+                'jour_semaine': 1,
+                'heure_debut': '09:00',
+                'heure_fin': '17:00',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(MecanicienDisponibilite.objects.filter(mecanicien=mecanicien).count(), 1)
+
+    def test_owner_can_list_only_garage_mecanicien_disponibilites(self):
+        owner = User.objects.create_user(username='owner-list-disp', password='testpass123')
+        other_owner = User.objects.create_user(username='owner-list-other', password='testpass123')
+        garage = Garage.objects.create(name='Garage List Disp', slug='garage-list-disp', owner=owner)
+        other_garage = Garage.objects.create(name='Garage List Other', slug='garage-list-other', owner=other_owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+        other_owner.profile.role = 'owner'
+        other_owner.profile.garage = other_garage
+        other_owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-list-a', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        other_mecanicien = User.objects.create_user(username='meca-list-b', password='testpass123')
+        other_mecanicien.profile.role = 'mecanicien'
+        other_mecanicien.profile.garage = other_garage
+        other_mecanicien.profile.save()
+
+        MecanicienDisponibilite.objects.create(
+            mecanicien=mecanicien,
+            jour_semaine=0,
+            heure_debut='08:00',
+            heure_fin='12:00',
+        )
+        MecanicienDisponibilite.objects.create(
+            mecanicien=other_mecanicien,
+            jour_semaine=2,
+            heure_debut='10:00',
+            heure_fin='14:00',
+        )
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.get('/api/users/owner/mecaniciens/disponibilites/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['mecanicien'], mecanicien.id)
+
+    def test_owner_cannot_create_overlapping_mecanicien_disponibilite(self):
+        owner = User.objects.create_user(username='owner-overlap-disp', password='testpass123')
+        garage = Garage.objects.create(name='Garage Overlap Disp', slug='garage-overlap-disp', owner=owner)
+        owner.profile.role = 'owner'
+        owner.profile.garage = garage
+        owner.profile.save()
+
+        mecanicien = User.objects.create_user(username='meca-overlap', password='testpass123')
+        mecanicien.profile.role = 'mecanicien'
+        mecanicien.profile.garage = garage
+        mecanicien.profile.save()
+
+        MecanicienDisponibilite.objects.create(
+            mecanicien=mecanicien,
+            jour_semaine=1,
+            heure_debut='09:00',
+            heure_fin='12:00',
+            actif=True,
+        )
+
+        refresh = RefreshToken.for_user(owner)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+
+        response = self.client.post(
+            '/api/users/owner/mecaniciens/disponibilites/',
+            {
+                'mecanicien': mecanicien.id,
+                'jour_semaine': 1,
+                'heure_debut': '11:00',
+                'heure_fin': '13:00',
+                'actif': True,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

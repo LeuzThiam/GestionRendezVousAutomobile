@@ -1,6 +1,5 @@
 # vehicules/views.py
 from rest_framework import viewsets, permissions
-from rest_framework.exceptions import PermissionDenied
 from .models import Vehicule
 from .serializers import VehiculeSerializer
 
@@ -20,6 +19,4 @@ class VehiculeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         garage = getattr(getattr(self.request.user, 'profile', None), 'garage', None)
-        if garage is None:
-            raise PermissionDenied("Un utilisateur doit appartenir a un garage pour enregistrer un vehicule.")
         serializer.save(owner=self.request.user, garage=garage)

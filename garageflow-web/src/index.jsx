@@ -1,14 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client'; // Utilisation correcte avec React 18
-import App from './App';
-import { AuthProvider } from './shared/auth/AuthContext';
+import ReactDOM from 'react-dom/client';
 
-// Créer une root avec React 18
+import App from './App';
+import AppProviders from './app/AppProviders';
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// Utiliser root.render pour monter l'application
 root.render(
-  <AuthProvider>
+  <AppProviders>
     <App />
-  </AuthProvider>
+  </AppProviders>
 );

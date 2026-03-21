@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Modal, Form, Container, Row, Col, Alert } from 'react-bootstrap';
+import { Card, Button, Modal, Form, Container, Row, Col, Alert, Badge } from 'react-bootstrap';
 import { fetchRendezVousRequest, updateRendezVousRequest } from '../api/rendezVous';
+import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/rendezVousStatus';
+
+function formatDateTime(value) {
+  if (!value) {
+    return '-';
+  }
+
+  return new Intl.DateTimeFormat('fr-CA', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
 
 function ListeRendezVousMecanicien() {
   const [rendezVousList, setRendezVousList] = useState([]);
@@ -127,9 +139,7 @@ function ListeRendezVousMecanicien() {
 
     try {
       setLoading(true);
-      // On repasse le statut à "confirmed" (et on garde la date modifiée par le client)
       await updateRendezVousRequest(selectedRdv.id, {
-        date: selectedRdv.date,
         status: 'confirmed',
       });
 
@@ -162,6 +172,7 @@ function ListeRendezVousMecanicien() {
       // Annuler la modif => re-statut 'confirmed'
       await updateRendezVousRequest(selectedRdv.id, {
         status: 'confirmed',
+        date: selectedRdv.date,
       });
 
       setRendezVousList((prev) =>
@@ -194,7 +205,12 @@ function ListeRendezVousMecanicien() {
           <Col xs={12} md={6} lg={4} key={rdv.id}>
             <Card className="mb-3">
               <Card.Header className="bg-warning text-dark">
-                Rendez-vous du {rdv.date}
+                <div className="d-flex justify-content-between align-items-center gap-2">
+                  <span>Rendez-vous du {formatDateTime(rdv.date)}</span>
+                  <Badge bg={getRendezVousStatusVariant(rdv.status)}>
+                    {getRendezVousStatusLabel(rdv.status)}
+                  </Badge>
+                </div>
               </Card.Header>
               <Card.Body>
                 <p><strong>Symptômes :</strong> {rdv.description || 'Aucune description'}</p>
@@ -219,12 +235,18 @@ function ListeRendezVousMecanicien() {
           <Col xs={12} md={6} lg={4} key={rdv.id}>
             <Card className="mb-3">
               <Card.Header className="bg-info text-dark">
-                Rendez-vous du {rdv.date}
+                <div className="d-flex justify-content-between align-items-center gap-2">
+                  <span>Rendez-vous du {formatDateTime(rdv.date)}</span>
+                  <Badge bg={getRendezVousStatusVariant(rdv.status)}>
+                    {getRendezVousStatusLabel(rdv.status)}
+                  </Badge>
+                </div>
               </Card.Header>
               <Card.Body>
-                <p><strong>Status:</strong> {rdv.status}</p>
+                <p><strong>Statut :</strong> {getRendezVousStatusLabel(rdv.status)}</p>
                 <p><strong>Symptômes:</strong> {rdv.description || 'Aucune description'}</p>
-                <p><em>Le client propose une nouvelle date/heure</em></p>
+                <p><strong>Creneau actuel :</strong> {formatDateTime(rdv.date)}</p>
+                <p><strong>Proposition client :</strong> {formatDateTime(rdv.requested_date)}</p>
                 <div className="d-flex justify-content-between">
                   <Button variant="success" onClick={() => handleCheckModification(rdv)}>
                     Voir détails
@@ -243,7 +265,12 @@ function ListeRendezVousMecanicien() {
           <Col xs={12} md={6} lg={4} key={rdv.id}>
             <Card className="mb-3">
               <Card.Header className="bg-success text-white">
-                Rendez-vous confirmé du {rdv.date}
+                <div className="d-flex justify-content-between align-items-center gap-2">
+                  <span>Rendez-vous confirme du {formatDateTime(rdv.date)}</span>
+                  <Badge bg={getRendezVousStatusVariant(rdv.status)}>
+                    {getRendezVousStatusLabel(rdv.status)}
+                  </Badge>
+                </div>
               </Card.Header>
               <Card.Body>
                 <p><strong>Symptômes:</strong> {rdv.description || 'N/A'}</p>
@@ -262,7 +289,12 @@ function ListeRendezVousMecanicien() {
           <Col xs={12} md={6} lg={4} key={rdv.id}>
             <Card className="mb-3">
               <Card.Header className="bg-danger text-white">
-                Rendez-vous refusé du {rdv.date}
+                <div className="d-flex justify-content-between align-items-center gap-2">
+                  <span>Rendez-vous refuse du {formatDateTime(rdv.date)}</span>
+                  <Badge bg={getRendezVousStatusVariant(rdv.status)}>
+                    {getRendezVousStatusLabel(rdv.status)}
+                  </Badge>
+                </div>
               </Card.Header>
               <Card.Body>
                 <p><strong>Symptômes:</strong> {rdv.description || 'N/A'}</p>
@@ -280,7 +312,12 @@ function ListeRendezVousMecanicien() {
           <Col xs={12} md={6} lg={4} key={rdv.id}>
             <Card className="mb-3">
               <Card.Header className="bg-secondary text-white">
-                Rendez-vous annulé du {rdv.date}
+                <div className="d-flex justify-content-between align-items-center gap-2">
+                  <span>Rendez-vous annule du {formatDateTime(rdv.date)}</span>
+                  <Badge bg={getRendezVousStatusVariant(rdv.status)}>
+                    {getRendezVousStatusLabel(rdv.status)}
+                  </Badge>
+                </div>
               </Card.Header>
               <Card.Body>
                 <p><strong>Symptômes:</strong> {rdv.description || 'N/A'}</p>
@@ -300,10 +337,13 @@ function ListeRendezVousMecanicien() {
           {selectedRdv && (
             <>
               <p>
-                <strong>Nouvelle Date/Heure proposée :</strong> {selectedRdv.date}
+                <strong>Creneau actuel :</strong> {formatDateTime(selectedRdv.date)}
               </p>
               <p>
-                <em>Si vous acceptez, la date du RDV passera à ce nouveau créneau.</em>
+                <strong>Nouvelle Date/Heure proposée :</strong> {formatDateTime(selectedRdv.requested_date)}
+              </p>
+              <p>
+                <em>Si vous acceptez, le rendez-vous prendra le créneau demandé par le client.</em>
               </p>
             </>
           )}

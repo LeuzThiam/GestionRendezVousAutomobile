@@ -11,10 +11,21 @@ on:
     branches:
       - master
       - dev
+      - feature/**
+      - fix/**
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DJANGO_SECRET_KEY: ci-secret-key-long-pour-github-actions-123456
+  DJANGO_DEBUG: "False"
 
 jobs:
   frontend:
-    name: Frontend Build
+    name: Frontend Tests And Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,11 +45,14 @@ jobs:
       - name: Installer les dependances frontend
         run: npm ci
 
+      - name: Lancer les tests frontend
+        run: npm run test -- --run
+
       - name: Lancer le build frontend
         run: npm run build
 
   backend:
-    name: Backend Tests
+    name: Backend Checks And Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -58,14 +72,11 @@ jobs:
       - name: Installer les dependances backend
         run: pip install -r requirements-ci.txt
 
+      - name: Verifier les migrations manquantes
+        run: python manage.py makemigrations --check --dry-run
+
       - name: Verifier les migrations Django
         run: python manage.py migrate --noinput
-        env:
-          DJANGO_SECRET_KEY: ci-secret-key-long-pour-github-actions-123456
-          DJANGO_DEBUG: "False"
 
       - name: Lancer les tests Django
-        run: python manage.py test
-        env:
-          DJANGO_SECRET_KEY: ci-secret-key-long-pour-github-actions-123456
-          DJANGO_DEBUG: "False"
+        run: python manage.py test --verbosity 2

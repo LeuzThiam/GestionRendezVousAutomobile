@@ -10,7 +10,7 @@ import {
   faSignInAlt,
   faUserPlus,
 } from '@fortawesome/free-solid-svg-icons';
-import { useAuth } from '../shared/auth/AuthContext';
+import { useAuth } from '../shared/auth';
 
 function Menu() {
   const { user, isAuthenticated, logout } = useAuth();

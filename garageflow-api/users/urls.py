@@ -1,17 +1,16 @@
 # users/urls.py
 
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
-from .views import (
-    UserRegistrationView,
-    UserProfileView,
-    UserProfileUpdateView,
-    MyTokenObtainPairView,
+from comptes.views import UserDetailView, UserProfileUpdateView, UserProfileView, UserRegistrationView
+from comptes.auth_views import MyTokenObtainPairView
+from personnel.views import (
+    MecanicienDetailView,
+    MecanicienDisponibiliteDetailView,
+    MecanicienDisponibiliteListCreateView,
     MecanicienListView,
     MecanicienManagementView,
-    MecanicienDetailView,
-    UserDetailView  # <-- NOUVEAU
 )
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     # Enregistrement
@@ -29,6 +28,8 @@ urlpatterns = [
     path('mecaniciens/', MecanicienListView.as_view(), name='mecaniciens-list'),
     path('owner/mecaniciens/', MecanicienManagementView.as_view(), name='owner-mecaniciens'),
     path('owner/mecaniciens/<int:pk>/', MecanicienDetailView.as_view(), name='owner-mecanicien-detail'),
+    path('owner/mecaniciens/disponibilites/', MecanicienDisponibiliteListCreateView.as_view(), name='owner-mecanicien-disponibilites'),
+    path('owner/mecaniciens/disponibilites/<int:pk>/', MecanicienDisponibiliteDetailView.as_view(), name='owner-mecanicien-disponibilite-detail'),
 
     # NOUVEAU : CRUD (RUD) sur un user par son ID
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),
