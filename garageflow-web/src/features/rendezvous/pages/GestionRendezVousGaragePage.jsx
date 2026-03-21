@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner } from '
 import { useLocation } from 'react-router-dom';
 import { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } from '../../personnel/api';
 import { fetchRendezVousRequest, updateRendezVousRequest } from '../api';
+import { EmptyState, ErrorState, PageHeader, SectionCard, StatBadgeGroup } from '../../../shared/ui';
 import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/status';
 
 const durationOptions = ['0.50', '1.00', '1.50', '2.00', '3.00', '4.00'];
@@ -340,6 +341,12 @@ function GestionRendezVousGarage() {
     () => filteredRendezVous.filter((item) => ['rejected', 'cancelled', 'done'].includes(item.status)),
     [filteredRendezVous]
   );
+  const topStats = [
+    { label: 'En attente', value: pendingRendezVous.length, bg: 'warning', text: 'dark' },
+    { label: 'Reprogrammation', value: modificationRequestedRendezVous.length, bg: 'info' },
+    { label: 'Confirmes', value: confirmedRendezVous.length, bg: 'success' },
+    { label: 'Historique', value: closedRendezVous.length, bg: 'secondary' },
+  ];
 
   const handleFieldChange = (id, field, value) => {
     setForms((current) => ({
@@ -826,21 +833,21 @@ function GestionRendezVousGarage() {
 
   return (
     <Container className="py-5">
-      <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
-        <div>
-          <h1 className="mb-2">Gestion des rendez-vous</h1>
-          <p className="text-muted mb-0">
-            Traitez les demandes clients, filtrez rapidement l atelier et gardez un historique de decision plus clair.
-          </p>
-        </div>
-        {loading && <Spinner animation="border" size="sm" />}
-      </div>
+      <PageHeader
+        title="Gestion des rendez-vous"
+        description="Traitez les demandes clients, filtrez rapidement l atelier et gardez un historique de decision plus clair."
+        actions={(
+          <>
+            <StatBadgeGroup items={topStats} />
+            {loading ? <Spinner animation="border" size="sm" /> : null}
+          </>
+        )}
+      />
 
       {message && <Alert variant="success">{message}</Alert>}
-      {error && <Alert variant="danger">{flattenError(error)}</Alert>}
+      <ErrorState>{flattenError(error)}</ErrorState>
 
-      <Card className="shadow-sm border-0 mb-4">
-        <Card.Body>
+      <SectionCard className="shadow-sm border-0 mb-4">
           <Row className="g-3">
             <Col md={4}>
               <Form.Group>
@@ -910,12 +917,10 @@ function GestionRendezVousGarage() {
               </Form.Group>
             </Col>
           </Row>
-        </Card.Body>
-      </Card>
+      </SectionCard>
 
       {selectedIds.length > 0 && (
-        <Card className="shadow-sm border-0 mb-4">
-          <Card.Body>
+        <SectionCard className="shadow-sm border-0 mb-4">
             <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
               <div>
                 <div className="fw-semibold">{selectedIds.length} demande(s) selectionnee(s)</div>
@@ -937,69 +942,60 @@ function GestionRendezVousGarage() {
                 </Button>
               </div>
             </div>
-          </Card.Body>
-        </Card>
+        </SectionCard>
       )}
 
-      <section className="mb-5">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="h4 mb-0">Demandes a traiter</h2>
-          <Badge bg="warning" text="dark">{pendingRendezVous.length}</Badge>
-        </div>
+      <SectionCard
+        className="mb-5 shadow-sm border-0"
+        title="Demandes a traiter"
+        actions={<Badge bg="warning" text="dark">{pendingRendezVous.length}</Badge>}
+      >
         <Row className="g-4">
           {pendingRendezVous.map((rdv) => renderCard(rdv, true))}
         </Row>
         {pendingRendezVous.length === 0 && (
-          <Card className="shadow-sm">
-            <Card.Body>Aucune demande en attente pour le moment.</Card.Body>
-          </Card>
+          <EmptyState>Aucune demande en attente pour le moment.</EmptyState>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="mb-5">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="h4 mb-0">Demandes de reprogrammation</h2>
-          <Badge bg="info">{modificationRequestedRendezVous.length}</Badge>
-        </div>
+      <SectionCard
+        className="mb-5 shadow-sm border-0"
+        title="Demandes de reprogrammation"
+        actions={<Badge bg="info">{modificationRequestedRendezVous.length}</Badge>}
+      >
         <Row className="g-4">
           {modificationRequestedRendezVous.map((rdv) => renderCard(rdv, true))}
         </Row>
         {modificationRequestedRendezVous.length === 0 && (
-          <Card className="shadow-sm">
-            <Card.Body>Aucune demande de reprogrammation pour le moment.</Card.Body>
-          </Card>
+          <EmptyState>Aucune demande de reprogrammation pour le moment.</EmptyState>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="mb-5">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="h4 mb-0">Rendez-vous confirmes</h2>
-          <Badge bg="success">{confirmedRendezVous.length}</Badge>
-        </div>
+      <SectionCard
+        className="mb-5 shadow-sm border-0"
+        title="Rendez-vous confirmes"
+        actions={<Badge bg="success">{confirmedRendezVous.length}</Badge>}
+      >
         <Row className="g-4">
           {confirmedRendezVous.map((rdv) => renderCard(rdv, false))}
         </Row>
         {confirmedRendezVous.length === 0 && (
-          <Card className="shadow-sm">
-            <Card.Body>Aucun rendez-vous confirme.</Card.Body>
-          </Card>
+          <EmptyState>Aucun rendez-vous confirme.</EmptyState>
         )}
-      </section>
+      </SectionCard>
 
-      <section>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="h4 mb-0">Historique recent</h2>
-          <Badge bg="secondary">{closedRendezVous.length}</Badge>
-        </div>
+      <SectionCard
+        className="shadow-sm border-0"
+        title="Historique recent"
+        actions={<Badge bg="secondary">{closedRendezVous.length}</Badge>}
+      >
         <Row className="g-4">
           {closedRendezVous.map((rdv) => renderCard(rdv, false))}
         </Row>
         {closedRendezVous.length === 0 && (
-          <Card className="shadow-sm">
-            <Card.Body>Aucun rendez-vous clos pour le moment.</Card.Body>
-          </Card>
+          <EmptyState>Aucun rendez-vous clos pour le moment.</EmptyState>
         )}
-      </section>
+      </SectionCard>
     </Container>
   );
 }

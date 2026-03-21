@@ -1,34 +1,34 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import DashboardGarage from '../DashboardGarage';
+import DashboardGarage from '../../features/garages/pages/DashboardGaragePage';
 
-vi.mock('../../shared/auth/AuthContext', () => ({
+vi.mock('../../shared/auth', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('../../api/mecaniciens', () => ({
+vi.mock('../../features/personnel/api', () => ({
   fetchGarageMecaniciensRequest: vi.fn(),
   fetchMecanicienDisponibilitesRequest: vi.fn(),
 }));
 
-vi.mock('../../api/rendezVous', () => ({
+vi.mock('../../features/rendezvous/api', () => ({
   fetchRendezVousRequest: vi.fn(),
 }));
 
-vi.mock('../../api/services', () => ({
+vi.mock('../../features/garages/api', () => ({
   fetchGarageServicesRequest: vi.fn(),
 }));
 
-vi.mock('../../api/disponibilites', () => ({
+vi.mock('../../features/planification/api', () => ({
   fetchGarageDisponibilitesRequest: vi.fn(),
 }));
 
-const { useAuth } = await import('../../shared/auth/AuthContext');
-const { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } = await import('../../api/mecaniciens');
-const { fetchRendezVousRequest } = await import('../../api/rendezVous');
-const { fetchGarageServicesRequest } = await import('../../api/services');
-const { fetchGarageDisponibilitesRequest } = await import('../../api/disponibilites');
+const { useAuth } = await import('../../shared/auth');
+const { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } = await import('../../features/personnel/api');
+const { fetchRendezVousRequest } = await import('../../features/rendezvous/api');
+const { fetchGarageServicesRequest } = await import('../../features/garages/api');
+const { fetchGarageDisponibilitesRequest } = await import('../../features/planification/api');
 
 function renderDashboard() {
   return render(

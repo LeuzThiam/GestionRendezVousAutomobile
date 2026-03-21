@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { Button, Container, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../shared/auth/AuthContext';
+import { useAuth } from '../shared/auth';
 
 function Acceuil() {
   const navigate = useNavigate();

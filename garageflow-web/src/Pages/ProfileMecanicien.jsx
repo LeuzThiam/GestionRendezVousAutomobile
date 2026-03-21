@@ -12,7 +12,7 @@ import {
 
 import ListeRendezVousMecanicien from './ListeRendezVousMecanicien';
 import './style.css';
-import { useAuth } from '../shared/auth/AuthContext';
+import { useAuth } from '../shared/auth';
 
 function ProfileMecanicien() {
   const { user: currentUser, loading, error, refreshUser, updateUser } = useAuth();

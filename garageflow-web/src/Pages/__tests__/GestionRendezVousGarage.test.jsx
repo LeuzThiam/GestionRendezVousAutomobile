@@ -2,20 +2,20 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import GestionRendezVousGarage from '../GestionRendezVousGarage';
+import GestionRendezVousGarage from '../../features/rendezvous/pages/GestionRendezVousGaragePage';
 
-vi.mock('../../api/mecaniciens', () => ({
+vi.mock('../../features/personnel/api', () => ({
   fetchGarageMecaniciensRequest: vi.fn(),
   fetchMecanicienDisponibilitesRequest: vi.fn(),
 }));
 
-vi.mock('../../api/rendezVous', () => ({
+vi.mock('../../features/rendezvous/api', () => ({
   fetchRendezVousRequest: vi.fn(),
   updateRendezVousRequest: vi.fn(),
 }));
 
-const { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } = await import('../../api/mecaniciens');
-const { fetchRendezVousRequest } = await import('../../api/rendezVous');
+const { fetchGarageMecaniciensRequest, fetchMecanicienDisponibilitesRequest } = await import('../../features/personnel/api');
+const { fetchRendezVousRequest } = await import('../../features/rendezvous/api');
 
 function renderPage() {
   return render(

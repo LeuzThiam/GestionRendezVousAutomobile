@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchPublicGarageRequest } from '../api/garages';
 import { createRendezVousRequest } from '../api/rendezVous';
 import { fetchVehiculesRequest } from '../api/vehicules';
-import { useAuth } from '../shared/auth/AuthContext';
+import { useAuth } from '../shared/auth';
 
 function formatCurrency(value) {
   if (value === null || value === undefined || value === '') {

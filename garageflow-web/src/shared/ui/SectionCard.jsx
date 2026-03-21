@@ -6,12 +6,33 @@ export default function SectionCard({ title, subtitle, actions, children, classN
     <Card className={className}>
       <Card.Body className={bodyClassName}>
         {(title || subtitle || actions) ? (
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              {title ? <h3 className="h5 mb-0">{title}</h3> : null}
-              {subtitle ? <span className="text-muted small">{subtitle}</span> : null}
+          <div
+            className="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-2 mb-4"
+            style={{ position: 'relative', zIndex: 1 }}
+          >
+            <div className="flex-grow-1 pe-md-3" style={{ minWidth: 0 }}>
+              {title ? (
+                <h3
+                  className="h5 mb-0"
+                  style={{
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {title}
+                </h3>
+              ) : null}
+              {subtitle ? <span className="text-muted small d-inline-block mt-1">{subtitle}</span> : null}
             </div>
-            {actions ? <div className="d-flex flex-wrap gap-2">{actions}</div> : null}
+            {actions ? (
+              <div
+                className="d-flex flex-wrap gap-2 align-self-start"
+                style={{ flexShrink: 0, position: 'relative', zIndex: 1 }}
+              >
+                {actions}
+              </div>
+            ) : null}
           </div>
         ) : null}
         {children}
