@@ -6,9 +6,12 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from garages.models import DisponibiliteGarage, Garage, ServiceOffert
-from rendez_vous.models import RendezVous, ReprogrammationProposition
-from users.models import MecanicienDisponibilite
+from garages.models import Garage
+from personnel.models import MecanicienDisponibilite
+from planification.models import DisponibiliteGarage
+from prestations.models import ServiceOffert
+from reprogrammations.models import ReprogrammationProposition
+from rendez_vous.models import RendezVous
 from vehicules.models import Vehicule
 
 

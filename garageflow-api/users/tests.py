@@ -6,7 +6,7 @@ from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from garages.models import Garage
-from users.models import MecanicienDisponibilite
+from personnel.models import MecanicienDisponibilite
 from rendez_vous.models import RendezVous
 
 

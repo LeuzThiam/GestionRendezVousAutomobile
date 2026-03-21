@@ -2,10 +2,12 @@
 
 from rest_framework import serializers
 from django.utils import timezone
-from .models import RendezVous, ReprogrammationProposition
+from .models import RendezVous
+from prestations.models import ServiceOffert
+from reprogrammations.serializers import ReprogrammationPropositionSerializer
+from reprogrammations.services import create_reschedule_proposal, get_pending_proposal, mark_pending_reschedules
 from vehicules.models import Vehicule
-from garages.models import DisponibiliteGarage, ServiceOffert
-from users.models import MecanicienDisponibilite
+from planification.services import garage_has_active_slot, mecanicien_has_active_slot, mecanicien_has_conflict
 
 
 class VehiculeSummarySerializer(serializers.ModelSerializer):
@@ -18,47 +20,6 @@ class ServiceSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceOffert
         fields = ['id', 'nom', 'description', 'duree_estimee', 'prix_indicatif']
-
-
-class ReprogrammationPropositionSerializer(serializers.ModelSerializer):
-    proposal_type_label = serializers.CharField(source='get_proposal_type_display', read_only=True)
-    response_status_label = serializers.CharField(source='get_response_status_display', read_only=True)
-    created_by_name = serializers.SerializerMethodField()
-    responded_by_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ReprogrammationProposition
-        fields = [
-            'id',
-            'proposal_type',
-            'proposal_type_label',
-            'proposed_date',
-            'created_at',
-            'created_by_name',
-            'response_status',
-            'response_status_label',
-            'responded_at',
-            'responded_by_name',
-            'internal_note',
-        ]
-
-    def _format_actor_name(self, user):
-        if not user:
-            return None
-        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-        return full_name or user.username
-
-    def get_created_by_name(self, obj):
-        return self._format_actor_name(obj.created_by)
-
-    def get_responded_by_name(self, obj):
-        return self._format_actor_name(obj.responded_by)
-
-    def to_representation(self, instance):
-        payload = super().to_representation(instance)
-        if not self.context.get('include_internal_notes'):
-            payload.pop('internal_note', None)
-        return payload
 
 
 class RendezVousSerializer(serializers.ModelSerializer):
@@ -170,13 +131,6 @@ class RendezVousSerializer(serializers.ModelSerializer):
         role = getattr(getattr(user, 'profile', None), 'role', None)
         return user.is_superuser or role in {'owner', 'mecanicien'}
 
-    def _get_pending_reschedule(self, obj):
-        proposals = obj.reprogrammation_propositions.all()
-        for proposal in proposals:
-            if proposal.response_status == 'pending':
-                return proposal
-        return None
-
     def get_reschedule_history(self, obj):
         serializer = ReprogrammationPropositionSerializer(
             obj.reprogrammation_propositions.all(),
@@ -186,86 +140,11 @@ class RendezVousSerializer(serializers.ModelSerializer):
         return serializer.data
 
     def get_has_pending_reschedule(self, obj):
-        return self._get_pending_reschedule(obj) is not None
+        return get_pending_proposal(obj) is not None
 
     def get_pending_reschedule_origin(self, obj):
-        pending = self._get_pending_reschedule(obj)
+        pending = get_pending_proposal(obj)
         return pending.proposal_type if pending else None
-
-    def _mark_pending_reschedules(self, instance, actor, response_status, note=''):
-        now = timezone.now()
-        updated = False
-        for proposal in instance.reprogrammation_propositions.filter(response_status='pending'):
-            proposal.response_status = response_status
-            proposal.responded_at = now
-            proposal.responded_by = actor
-            if note and not proposal.internal_note:
-                proposal.internal_note = note
-            proposal.save(update_fields=['response_status', 'responded_at', 'responded_by', 'internal_note'])
-            updated = True
-        return updated
-
-    def _create_reschedule_proposal(self, instance, actor, proposal_type, proposed_date, response_status='pending', note=''):
-        now = timezone.now()
-        payload = {
-            'rendez_vous': instance,
-            'proposed_date': proposed_date,
-            'proposal_type': proposal_type,
-            'created_by': actor,
-            'internal_note': note or '',
-            'response_status': response_status,
-        }
-        if response_status != 'pending':
-            payload['responded_at'] = now
-            payload['responded_by'] = actor
-        return ReprogrammationProposition.objects.create(**payload)
-
-    def _date_is_within_garage_availability(self, garage, date):
-        if garage is None or date is None:
-            return False
-        local_date = timezone.localtime(date)
-        weekday = local_date.weekday()
-        current_time = local_date.time().replace(second=0, microsecond=0)
-        return DisponibiliteGarage.objects.filter(
-            garage=garage,
-            actif=True,
-            jour_semaine=weekday,
-            heure_debut__lte=current_time,
-            heure_fin__gte=current_time,
-        ).exists()
-
-    def _mecanicien_has_conflict(self, mecanicien, date, instance):
-        if mecanicien is None or date is None:
-            return False
-        queryset = RendezVous.objects.filter(
-            mecanicien=mecanicien,
-            date=date,
-            status='confirmed',
-        )
-        if instance is not None:
-            queryset = queryset.exclude(pk=instance.pk)
-        return queryset.exists()
-
-    def _date_is_within_mecanicien_availability(self, mecanicien, date):
-        if mecanicien is None or date is None:
-            return False
-
-        local_date = timezone.localtime(date)
-        weekday = local_date.weekday()
-        current_time = local_date.time().replace(second=0, microsecond=0)
-        disponibilites = MecanicienDisponibilite.objects.filter(
-            mecanicien=mecanicien,
-            actif=True,
-        )
-
-        if not disponibilites.exists():
-            return True
-
-        return disponibilites.filter(
-            jour_semaine=weekday,
-            heure_debut__lte=current_time,
-            heure_fin__gte=current_time,
-        ).exists()
 
     def validate_date(self, value):
         if value < timezone.now():
@@ -364,11 +243,11 @@ class RendezVousSerializer(serializers.ModelSerializer):
             effective_date = date
             if status == 'confirmed' and 'date' not in attrs and instance and instance.status == 'modification_requested' and requested_date:
                 effective_date = requested_date
-            if status == 'confirmed' and not self._date_is_within_garage_availability(garage, effective_date):
+            if status == 'confirmed' and not garage_has_active_slot(garage, effective_date):
                 raise serializers.ValidationError({'date': "Le rendez-vous confirme doit tomber dans une disponibilite active du garage."})
-            if status == 'confirmed' and mecanicien is not None and not self._date_is_within_mecanicien_availability(mecanicien, effective_date):
+            if status == 'confirmed' and mecanicien is not None and not mecanicien_has_active_slot(mecanicien, effective_date):
                 raise serializers.ValidationError({'mecanicien': "Ce mecanicien n'est pas disponible sur ce creneau."})
-            if status == 'confirmed' and self._mecanicien_has_conflict(mecanicien, effective_date, instance):
+            if status == 'confirmed' and mecanicien_has_conflict(mecanicien, effective_date, instance):
                 raise serializers.ValidationError({'mecanicien': "Ce mecanicien est deja affecte a un autre rendez-vous sur ce creneau."})
             if status == 'rejected' and not attrs.get('reason', getattr(instance, 'reason', '')):
                 raise serializers.ValidationError({'reason': "Une raison est requise pour refuser un rendez-vous."})
@@ -413,8 +292,8 @@ class RendezVousSerializer(serializers.ModelSerializer):
             validated_data['rejected_by'] = actor
 
         if actor and status == 'modification_requested' and validated_data.get('requested_date'):
-            self._mark_pending_reschedules(instance, actor, 'superseded')
-            self._create_reschedule_proposal(
+            mark_pending_reschedules(instance, actor, 'superseded')
+            create_reschedule_proposal(
                 instance,
                 actor,
                 proposal_type='client_request',
@@ -425,11 +304,11 @@ class RendezVousSerializer(serializers.ModelSerializer):
         if actor and previous_status == 'modification_requested' and status == 'confirmed':
             accepted_requested_slot = previous_requested_date and target_date == previous_requested_date
             if accepted_requested_slot:
-                self._mark_pending_reschedules(instance, actor, 'accepted', garage_internal_note)
+                mark_pending_reschedules(instance, actor, 'accepted', garage_internal_note)
             else:
-                self._mark_pending_reschedules(instance, actor, 'rejected', garage_internal_note)
+                mark_pending_reschedules(instance, actor, 'rejected', garage_internal_note)
                 if target_date and target_date != previous_date:
-                    self._create_reschedule_proposal(
+                    create_reschedule_proposal(
                         instance,
                         actor,
                         proposal_type='garage_counter',
@@ -439,10 +318,10 @@ class RendezVousSerializer(serializers.ModelSerializer):
                     )
 
         if actor and previous_status == 'modification_requested' and status == 'rejected':
-            self._mark_pending_reschedules(instance, actor, 'rejected', garage_internal_note)
+            mark_pending_reschedules(instance, actor, 'rejected', garage_internal_note)
 
         if actor and previous_status != 'modification_requested' and status == 'confirmed' and previous_date and target_date and target_date != previous_date:
-            self._create_reschedule_proposal(
+            create_reschedule_proposal(
                 instance,
                 actor,
                 proposal_type='garage_counter',
@@ -452,7 +331,7 @@ class RendezVousSerializer(serializers.ModelSerializer):
             )
 
         if actor and status in {'cancelled', 'done'}:
-            self._mark_pending_reschedules(instance, actor, 'superseded', garage_internal_note)
+            mark_pending_reschedules(instance, actor, 'superseded', garage_internal_note)
 
         if status in {'confirmed', 'rejected', 'cancelled', 'done'}:
             validated_data['requested_date'] = None

@@ -5,7 +5,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('garages', '0002_serviceoffert'),
+        ('prestations', '0001_initial'),
         ('rendezVous', '0006_alter_rendezvous_mecanicien'),
     ]
 
@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='rendezvous',
             name='service',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='rendezvous', to='garages.serviceoffert'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='rendezvous', to='prestations.serviceoffert'),
         ),
     ]

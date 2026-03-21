@@ -3,7 +3,9 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from garages.models import DisponibiliteGarage, FermetureExceptionnelleGarage, Garage, ServiceOffert
+from garages.models import Garage
+from planification.models import DisponibiliteGarage, FermetureExceptionnelleGarage
+from prestations.models import ServiceOffert
 
 
 class GarageApiTests(APITestCase):

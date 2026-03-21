@@ -1,19 +1,16 @@
 # users/urls.py
 
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
-from .views import (
-    UserRegistrationView,
-    UserProfileView,
-    UserProfileUpdateView,
-    MyTokenObtainPairView,
+from comptes.views import UserDetailView, UserProfileUpdateView, UserProfileView, UserRegistrationView
+from comptes.auth_views import MyTokenObtainPairView
+from personnel.views import (
+    MecanicienDetailView,
+    MecanicienDisponibiliteDetailView,
+    MecanicienDisponibiliteListCreateView,
     MecanicienListView,
     MecanicienManagementView,
-    MecanicienDetailView,
-    MecanicienDisponibiliteListCreateView,
-    MecanicienDisponibiliteDetailView,
-    UserDetailView  # <-- NOUVEAU
 )
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     # Enregistrement

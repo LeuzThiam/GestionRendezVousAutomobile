@@ -1,17 +1,20 @@
 from django.db.models import Count, Q
 from rest_framework import generics, permissions
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
-from .models import DisponibiliteGarage, FermetureExceptionnelleGarage, Garage, ServiceOffert
+from planification.views import (
+    GarageDisponibiliteDetailView,
+    GarageDisponibiliteListCreateView,
+    GarageFermetureExceptionnelleDetailView,
+    GarageFermetureExceptionnelleListCreateView,
+)
+from prestations.views import GarageServiceDetailView, GarageServiceListCreateView
+
+from .models import Garage
 from .serializers import (
     GarageRegistrationSerializer,
     GarageSerializer,
     PublicGarageListSerializer,
     PublicGarageSerializer,
-    DisponibiliteGarageSerializer,
-    FermetureExceptionnelleGarageSerializer,
-    ServiceOffertSerializer,
 )
 
 
@@ -57,69 +60,3 @@ class PublicGarageListView(generics.ListAPIView):
         return queryset.annotate(
             mecaniciens_count=Count('profiles', filter=Q(profiles__role='mecanicien'))
         ).distinct()
-
-
-class GarageServiceListCreateView(generics.ListCreateAPIView):
-    serializer_class = ServiceOffertSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        return ServiceOffert.objects.filter(garage=garage)
-
-    def perform_create(self, serializer):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        serializer.save(garage=garage)
-
-
-class GarageServiceDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = ServiceOffertSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        return ServiceOffert.objects.filter(garage=garage)
-
-
-class GarageDisponibiliteListCreateView(generics.ListCreateAPIView):
-    serializer_class = DisponibiliteGarageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        return DisponibiliteGarage.objects.filter(garage=garage)
-
-    def perform_create(self, serializer):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        serializer.save(garage=garage)
-
-
-class GarageDisponibiliteDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = DisponibiliteGarageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        return DisponibiliteGarage.objects.filter(garage=garage)
-
-
-class GarageFermetureExceptionnelleListCreateView(generics.ListCreateAPIView):
-    serializer_class = FermetureExceptionnelleGarageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        return FermetureExceptionnelleGarage.objects.filter(garage=garage)
-
-    def perform_create(self, serializer):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        serializer.save(garage=garage)
-
-
-class GarageFermetureExceptionnelleDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = FermetureExceptionnelleGarageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        garage = getattr(self.request.user.profile, 'garage', None)
-        return FermetureExceptionnelleGarage.objects.filter(garage=garage)
