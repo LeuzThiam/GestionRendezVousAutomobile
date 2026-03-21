@@ -1,8 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { fetchCurrentUserRequest, logoutRequest } from '../../api/auth';
-import { fetchCurrentGarageRequest } from '../../api/garages';
-import { updateUserProfileRequest } from '../../api/users';
+import {
+  fetchCurrentGarageRequest,
+  fetchCurrentUserRequest,
+  logoutRequest,
+  updateUserProfileRequest,
+} from '../api';
 
 const AuthContext = createContext(null);
 
@@ -13,7 +16,6 @@ function getStoredUser() {
     return null;
   }
 }
-
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredUser);
