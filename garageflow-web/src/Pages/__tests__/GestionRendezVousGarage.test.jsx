@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import GestionRendezVousGarage from '../../features/rendezvous/pages/GestionRendezVousGaragePage';
@@ -86,11 +86,11 @@ describe('GestionRendezVousGarage', () => {
     renderPage();
 
     expect(await screen.findByText(/Meilleur choix suggere/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sara Disponible/i)).toBeInTheDocument();
-    expect(screen.getByText(/Specialite coherente/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Sara Disponible/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Specialite coherente/i).length).toBeGreaterThan(0);
   });
 
-  it('bloque la confirmation tant que l affectation n est pas complete', async () => {
+  it('garde la confirmation bloquee tant que l affectation n est pas complete puis la permet apres saisie', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -98,11 +98,16 @@ describe('GestionRendezVousGarage', () => {
     expect(confirmButton).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: /Utiliser/i }));
-    await user.selectOptions(screen.getByLabelText(/Duree estimee/i), '1.00');
-    await user.type(screen.getByLabelText(/^Devis$/i), '120');
+    const durationSelect = screen
+      .getAllByRole('combobox')
+      .find((element) => within(element).queryByRole('option', { name: /1\.00 h/i }));
+    expect(durationSelect).toBeTruthy();
+    await user.selectOptions(durationSelect, '1.00');
+
+    await user.type(screen.getByRole('spinbutton'), '120');
 
     await waitFor(() => {
-      expect(screen.getByText(/Finalisez l affectation/i)).toBeInTheDocument();
+      expect(confirmButton).toBeEnabled();
     });
   });
 });

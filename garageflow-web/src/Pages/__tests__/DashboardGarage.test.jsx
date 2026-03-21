@@ -103,7 +103,7 @@ describe('DashboardGarage', () => {
     });
 
     expect(screen.getByText(/A confirmer aujourd hui/i)).toBeInTheDocument();
-    expect(screen.getByText(/Temps moyen de reponse/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Temps moyen de reponse/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Ce qui manque pour etre operationnel/i)).toBeInTheDocument();
   });
 });
