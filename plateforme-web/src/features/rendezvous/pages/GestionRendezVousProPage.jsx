@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { fetchOrganizationMecaniciensRequest, fetchMecanicienDisponibilitesRequest } from '../../personnel/api';
 import { fetchRendezVousRequest, updateRendezVousRequest } from '../api';
 import { EmptyState, ErrorState, LoadingState, PageHeader, SectionCard, StatBadgeGroup } from '../../../shared/ui';
+import { getAssigneeId } from '../../../domain/apiFieldAliases';
 import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../utils/status';
 
 const durationOptions = ['0.50', '1.00', '1.50', '2.00', '3.00', '4.00'];
@@ -206,7 +207,7 @@ function GestionRendezVousPro() {
         rendezVousData.forEach((item) => {
           const selectedDate = item.requested_date || item.date;
           next[item.id] ??= {
-            mecanicien: item.employe ?? item.mecanicien ?? '',
+            mecanicien: getAssigneeId(item) ?? '',
             estimatedTime: item.estimatedTime || '1.00',
             quote: item.quote || '',
             reason: item.reason || '',

@@ -20,6 +20,7 @@ import { fetchOrganizationMecaniciensRequest, fetchMecanicienDisponibilitesReque
 import { fetchOrganizationDisponibilitesRequest } from '../../planification/api';
 import { fetchOrganizationServicesRequest } from '../api';
 import { fetchRendezVousRequest } from '../../rendezvous/api';
+import { getAssigneeId } from '../../../domain/apiFieldAliases';
 import { useAuth } from '../../../shared/auth';
 import { ErrorState, LoadingState, PageHeader, SectionCard, StatBadgeGroup } from '../../../shared/ui';
 import { getRendezVousStatusLabel, getRendezVousStatusVariant } from '../../rendezvous/utils/status';
@@ -111,8 +112,7 @@ function DashboardPro() {
 
   const confirmedSansEmploye = useMemo(() => {
     return rendezVous.filter((item) => {
-      const assigne = item.employe ?? item.mecanicien;
-      return item.status === 'confirmed' && !assigne;
+      return item.status === 'confirmed' && !getAssigneeId(item);
     }).length;
   }, [rendezVous]);
 

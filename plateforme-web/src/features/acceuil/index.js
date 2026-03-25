@@ -1,1 +1,1 @@
-export { default as AcceuilPage } from '../../Pages/Acceuil.jsx';
+export { default as AcceuilPage } from './pages/AcceuilPage.jsx';
