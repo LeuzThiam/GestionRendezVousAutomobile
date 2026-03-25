@@ -39,7 +39,7 @@ Expose les ecrans par domaine metier :
 
 - `authentification`
 - `client`
-- `garages`
+- `organizations`
 - `personnel`
 - `planification`
 - `rendezvous`
@@ -48,7 +48,7 @@ Expose les ecrans par domaine metier :
 La migration est maintenant mixte :
 
 - certaines features reexportent encore les composants de `Pages/`
-- les blocs les plus denses garage et client ont commence a etre deplaces dans `features/.../pages`
+- les blocs les plus denses (espace pro / client) ont commence a etre deplaces dans `features/.../pages`
 - `Pages/` reste une facade de compatibilite pour ne pas casser les imports existants
 
 ## Regle de migration

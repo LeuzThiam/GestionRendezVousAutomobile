@@ -2,8 +2,8 @@
 
 Ce depot contient deux zones de travail:
 
-- `garageflow-api/` pour l'API Django
-- `garageflow-web/` pour le frontend React
+- `plateforme-api/` pour l'API Django
+- `plateforme-web/` pour le frontend React
 
 ## Branches
 
@@ -54,7 +54,7 @@ Puis ouvrir une Pull Request vers `dev` ou `master` selon l'organisation choisie
 
 ### Backend Django
 
-Executer depuis `garageflow-api/`:
+Executer depuis `plateforme-api/`:
 
 ```bash
 python manage.py test
@@ -62,7 +62,7 @@ python manage.py test
 
 ### Frontend React
 
-Executer depuis `garageflow-web/`:
+Executer depuis `plateforme-web/`:
 
 ```bash
 npm install

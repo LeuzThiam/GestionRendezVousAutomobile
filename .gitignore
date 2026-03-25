@@ -1,10 +1,10 @@
-garageflow-api/env/
-garageflow-api/__pycache__/
-garageflow-api/*/__pycache__/
-garageflow-api/*/migrations/__pycache__/
-garageflow-web/node_modules/
-garageflow-web/dist/
-garageflow-web/.cache/
+plateforme-api/env/
+plateforme-api/__pycache__/
+plateforme-api/*/__pycache__/
+plateforme-api/*/migrations/__pycache__/
+plateforme-web/node_modules/
+plateforme-web/dist/
+plateforme-web/.cache/
 *.pyc
 *.pyo
 *.sqlite3

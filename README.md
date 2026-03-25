@@ -1,23 +1,23 @@
 # GestionRendezVousAutomobile
 
-Plateforme SaaS MVP de gestion de garages automobiles avec prise de rendez-vous en ligne.
+Plateforme SaaS MVP de prise de rendez-vous en ligne pour **prestataires** (établissements : atelier / services techniques, multi-services, etc.).
 
-Le projet est compose de deux applications :
+Le détail du périmètre, des acteurs et de l’architecture est dans le [**cahier des charges**](docs/cahier-des-charges.md).
 
-- `garageflow-api/` : backend Django REST
-- `garageflow-web/` : frontend React avec Vite
+Le projet est composé de deux applications :
+
+- `plateforme-api/` : backend Django REST
+- `plateforme-web/` : frontend React avec Vite
 
 ## Vision du produit
 
-Le produit repose sur une logique multi-garages :
+Le produit repose sur une logique **multi-organisations** (établissements) :
 
-- un proprietaire cree et administre son garage
-- il configure son profil, ses services, ses horaires et son equipe mecanique
-- les clients recherchent un garage et envoient une demande de rendez-vous
-- le garage traite la demande, organise le planning et affecte un mecanicien en interne
+- un propriétaire crée et administre **son établissement** (profil, type, services, horaires, équipe)
+- les clients **recherchent un établissement**, consultent la fiche publique et envoient une demande de rendez-vous
+- l’établissement traite la demande, organise le planning et affecte un **mécanicien** en interne
 
-Du point de vue client, l interlocuteur principal est toujours le garage.  
-Le mecanicien reste une ressource interne au garage.
+Du point de vue client, l’interlocuteur principal est **l’établissement**. Le mécanicien reste une ressource interne.
 
 ## Perimetre MVP
 
@@ -25,25 +25,24 @@ Le mecanicien reste une ressource interne au garage.
 
 - creation de compte et connexion
 - espace personnel
-- recherche de garages
-- consultation de la fiche publique d un garage
+- recherche d’établissements (organisations publiques)
+- consultation de la fiche publique
 - envoi d une demande de rendez-vous
 - suivi des rendez-vous et historique
-- gestion des vehicules
 
-### Cote garage
+### Cote etablissement (espace `/pro/`)
 
-- creation de compte proprietaire avec creation du garage
-- tableau de bord garage
-- gestion du profil garage
+- creation de compte proprietaire avec creation de l’organisation
+- tableau de bord
+- gestion du profil établissement (type atelier / multi-services, etc.)
 - gestion des services proposes
-- gestion des disponibilites du garage
+- gestion des disponibilites et fermetures
 - gestion des mecaniciens
 - gestion des disponibilites des mecaniciens
 - traitement des demandes de rendez-vous
 - reprogrammation avec historique des propositions
 - affectation assistee des mecaniciens
-- planning garage en vue horaire
+- planning en vue horaire
 
 ### Cote mecanicien
 
@@ -54,18 +53,17 @@ Le mecanicien reste une ressource interne au garage.
 
 ### Backend Django
 
-Le backend est structure autour de domaines metier :
+Le backend est structure autour de domaines metier, dont notamment :
 
-- `garages`
-- `users`
-- `vehicules`
-- `rendez_vous`
+- `organizations` (code ; label Django `garages` pour l’historique des migrations)
+- `comptes`, `prestations`, `planification`, `personnel`, `reprogrammations`
+- `users`, `rendez_vous`, `vehicules` (legacy / migrations)
 
 Fonctions principales :
 
 - authentification JWT
 - gestion des roles `owner`, `client`, `mecanicien`
-- isolation des donnees par garage
+- isolation des donnees par organisation (établissement)
 - gestion des rendez-vous et de leur cycle de vie
 - historique de reprogrammation
 - gestion des disponibilites et du planning
@@ -91,26 +89,25 @@ Le frontend repose sur :
 - connexion / deconnexion
 - recuperation de l utilisateur courant
 
-### Garage
+### Etablissement (API organizations)
 
-- profil garage public
-- description du garage
-- lien public de reservation
+- profil public
+- description
+- lien public de reservation (`/pro/:slug/reservation`)
 - gestion des services
 - gestion des disponibilites generales
 - gestion des fermetures exceptionnelles
 - gestion des mecaniciens
 - gestion des disponibilites des mecaniciens
-- dashboard garage
-- planning garage
+- dashboard et planning
 
 ### Rendez-vous
 
-- creation par le client a destination d un garage
-- traitement par le garage
+- creation par le client vers un etablissement (champ API `organization`)
+- traitement par l’etablissement
 - confirmation, refus, cloture
 - reprogrammation avec historique des propositions
-- note interne garage pour les reprogrammations
+- note interne (`internal_note`) pour les reprogrammations
 - affectation assistee du mecanicien
 
 ## Endpoints principaux
@@ -124,15 +121,13 @@ Le frontend repose sur :
 - `POST /api/auth/logout/`
 - `GET /api/auth/me/`
 
-### Garage
+### Organisations (etablissement courant et annuaire public)
 
-- `GET /api/garages/me/`
-- `PATCH /api/garages/me/`
-- `GET /api/garages/public/`
-- `GET /api/garages/public/<slug>/`
-- `GET /api/garages/me/services/`
-- `GET /api/garages/me/disponibilites/`
-- `GET /api/garages/me/fermetures/`
+- `GET /api/organizations/me/`
+- `PATCH /api/organizations/me/`
+- `GET /api/organizations/public/`
+- `GET /api/organizations/public/<slug>/`
+- Ressources imbriquees sous `/api/organizations/me/` : services, disponibilites, fermetures, categories (selon routes exposees)
 
 ### Mecaniciens
 
@@ -152,7 +147,7 @@ Le frontend repose sur :
 
 ### 1. Backend
 
-Depuis `garageflow-api/` :
+Depuis `plateforme-api/` :
 
 ```bash
 python -m venv env
@@ -166,7 +161,7 @@ Le backend utilise SQLite par defaut si aucune configuration MySQL n est fournie
 
 ### 2. Frontend
 
-Depuis `garageflow-web/` :
+Depuis `plateforme-web/` :
 
 ```bash
 npm install
@@ -179,7 +174,7 @@ Le frontend demarre par defaut sur `http://127.0.0.1:5173/`.
 
 ### Backend
 
-Copier `garageflow-api/.env.example` puis definir si necessaire :
+Copier `plateforme-api/.env.example` puis definir si necessaire :
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG`
@@ -193,7 +188,7 @@ Copier `garageflow-api/.env.example` puis definir si necessaire :
 
 ### Frontend
 
-Copier `garageflow-web/.env.example` puis definir si besoin :
+Copier `plateforme-web/.env.example` puis definir si besoin :
 
 - `VITE_API_URL`
 
@@ -203,15 +198,15 @@ Par defaut, le frontend pointe vers `http://127.0.0.1:8000`.
 
 ### Backend
 
-Depuis `garageflow-api/` :
+Depuis `plateforme-api/` :
 
 ```bash
-python manage.py test users garages rendez_vous vehicules
+python manage.py test
 ```
 
 ### Frontend
 
-Depuis `garageflow-web/` :
+Depuis `plateforme-web/` :
 
 ```bash
 npm run test
@@ -237,13 +232,13 @@ Voir [.github/workflows/ci.yml](c:/Users/modou/OneDrive/Documents/COURS/BacInfor
 ```text
 GestionRendezVousAutomobile/
 ├── .github/
-├── garageflow-api/
+├── plateforme-api/
 │   ├── garageflow_api/
-│   ├── garages/
+│   ├── organizations/
 │   ├── rendez_vous/
 │   ├── users/
 │   └── vehicules/
-├── garageflow-web/
+├── plateforme-web/
 │   ├── src/
 │   │   ├── Pages/
 │   │   ├── api/
